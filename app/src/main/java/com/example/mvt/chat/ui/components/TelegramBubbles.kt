@@ -5,6 +5,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -12,11 +14,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.example.mvt.chat.data.model.ChatMessage
 import com.example.mvt.chat.data.model.UiMessage
 import java.text.SimpleDateFormat
+import java.util.Date
 import java.util.Locale
 
 @Composable
@@ -44,68 +49,114 @@ fun TelegramMessageBubble(
     onEdit: (ChatMessage) -> Unit,
     onDelete: (ChatMessage) -> Unit
 ) {
-    val bubbleShape = if (ui.isMine) {
-        RoundedCornerShape(18.dp, 6.dp, 18.dp, 18.dp) // parecido Telegram: “pico” suave
+    var menu by remember { mutableStateOf(false) }
+
+    val isMine = ui.isMine
+
+    // Colores tipo WhatsApp/Telegram
+    val bubbleColor = if (isMine) Color(0xFFDCF8C6) else Color(0xFFFFFFFF)
+    val textColor = Color(0xFF111827)
+    val metaColor = Color(0xFF6B7280)
+
+    val shape = if (isMine) {
+        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 6.dp)
     } else {
-        RoundedCornerShape(6.dp, 18.dp, 18.dp, 18.dp)
+        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 6.dp, bottomEnd = 18.dp)
     }
 
-    val alignment = if (ui.isMine) Alignment.End else Alignment.Start
-    val bubblePadding = if (ui.isMine) PaddingValues(start = 64.dp, end = 12.dp) else PaddingValues(start = 12.dp, end = 64.dp)
+    // Separación tipo chat real (deja margen al lado contrario)
+    val sidePadding = if (isMine) PaddingValues(start = 64.dp, end = 12.dp) else PaddingValues(start = 12.dp, end = 64.dp)
 
-    // Long-press actions (menú real se puede añadir luego con DropdownMenu)
-    Box(
-        Modifier.fillMaxWidth().padding(bubblePadding),
-        contentAlignment = alignment as Alignment
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(sidePadding),
+        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
     ) {
-        Column(
+        Box(
             modifier = Modifier
-                .clip(bubbleShape)
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .widthIn(max = 320.dp)
                 .combinedClickable(
                     onClick = {},
-                    onLongClick = {
-                        // Por ahora: prioriza borrar en pruebas rápidas.
-                        // En producción: muestra menú con Reply/Edit/Delete.
-                    }
+                    onLongClick = { menu = true }
                 )
-                .padding(horizontal = 12.dp, vertical = 8.dp)
         ) {
-            if (ui.msg.texto.isNotBlank()) {
-                Text(
-                    text = ui.msg.texto,
-                    style = MaterialTheme.typography.bodyMedium,
-                    overflow = TextOverflow.Visible
+            Column(
+                modifier = Modifier
+                    .clip(shape)
+                    .background(bubbleColor)
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                // Texto
+                if (ui.msg.texto.isNotBlank()) {
+                    Text(
+                        text = ui.msg.texto,
+                        color = textColor,
+                        style = MaterialTheme.typography.bodyMedium,
+                        lineHeight = 20.sp
+                    )
+                }
+
+                // Adjuntos (placeholder; luego puedes meter previews reales)
+                if (ui.msg.imageUrl.isNotBlank()) {
+                    Spacer(Modifier.height(6.dp))
+                    Text("🖼️ Imagen", color = metaColor, style = MaterialTheme.typography.labelMedium)
+                }
+                if (ui.msg.audioUrl.isNotBlank()) {
+                    Spacer(Modifier.height(4.dp))
+                    Text("🎤 Audio", color = metaColor, style = MaterialTheme.typography.labelMedium)
+                }
+
+                Spacer(Modifier.height(6.dp))
+
+                // Hora + checks
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = formatTime(ui.msg.timestamp),
+                        fontSize = 11.sp,
+                        color = metaColor,
+                        maxLines = 1,
+                        overflow = TextOverflow.Clip
+                    )
+                    if (isMine) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "✓✓",
+                            fontSize = 11.sp,
+                            color = metaColor
+                        )
+                    }
+                }
+            }
+
+            DropdownMenu(
+                expanded = menu,
+                onDismissRequest = { menu = false }
+            ) {
+                DropdownMenuItem(
+                    text = { Text("Responder") },
+                    onClick = { menu = false; onReply(ui.msg) }
                 )
-            }
-
-            if (ui.msg.imageUrl.isNotBlank()) {
-                Text("🖼️ Imagen", style = MaterialTheme.typography.labelMedium)
-                // Luego: AsyncImage (Coil) para render real
-            }
-            if (ui.msg.audioUrl.isNotBlank()) {
-                Text("🎤 Audio", style = MaterialTheme.typography.labelMedium)
-                // Luego: player simple
-            }
-
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                Text(
-                    text = formatTime(ui.msg.timestamp),
-                    style = MaterialTheme.typography.labelSmall
+                DropdownMenuItem(
+                    text = { Text("Editar") },
+                    onClick = { menu = false; onEdit(ui.msg) }
+                )
+                DropdownMenuItem(
+                    text = { Text("Eliminar") },
+                    onClick = { menu = false; onDelete(ui.msg) }
                 )
             }
         }
     }
 }
 
-private fun formatTime(iso: String): String {
-    // Simplificado (si falla: devuelve vacío)
+private fun formatTime(epochSeconds: Int): String {
     return try {
-        // Si tu ISO siempre viene UTC con milisegundos:
-        val inFmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
-            timeZone = java.util.TimeZone.getTimeZone("UTC")
-        }
-        val d = inFmt.parse(iso) ?: return ""
+        val d = Date(epochSeconds.toLong() * 1000L)
         SimpleDateFormat("HH:mm", Locale.getDefault()).format(d)
     } catch (_: Exception) {
         ""

@@ -1,3 +1,6 @@
+// ===============================================
+// FILE 2: com.example.mvt.navigation.AppNavigation.kt
+// ===============================================
 package com.example.mvt.navigation
 
 import android.os.Build
@@ -19,17 +22,23 @@ import androidx.navigation.compose.rememberNavController
 import com.example.mvt.domain.repositories.UserRepository
 import com.example.mvt.domain.usecases.GetUserInfoUseCase
 import com.example.mvt.ui.screens.AthleteMainScreen
+import com.example.mvt.ui.screens.LogoScreen
 import com.example.mvt.ui.screens.SessionScreen
 import com.example.mvt.ui.screens.auth.LoginScreen
-import com.example.mvt.ui.screens.LogoScreen
 import com.example.mvt.ui.viewmodels.UserViewModel
 
-// ===== CHAT IMPORTS =====
-import com.example.mvt.chat.data.repo.ChatRepository
-import com.example.mvt.chat.ui.components.TrainerChatBubble
-import com.example.mvt.chat.ui.screen.ChatPopupDialog
-import com.example.mvt.chat.ui.screen.ChatScreen
-import com.example.mvt.chat.viewmodel.ChatViewModel
+// ===== CHAT =====
+import com.example.mvt.chat.ui.components.TrainerBubbleHost
+import com.example.mvt.chat.ui.screen.ChatPopup
+import com.example.mvt.chat.ui.screen.ChatConversationContent
+
+// ===== TRAINER (RTDB) =====
+import com.example.mvt.chat.data.repo.TrainerRealtimeRepository
+import com.example.mvt.chat.viewmodel.TrainerBubbleViewModel
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+
+// ===== FIRESTORE/STORAGE =====
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 
@@ -39,40 +48,45 @@ fun AppNavigation() {
     val navController: NavHostController = rememberNavController()
 
     // --- Inyección manual del ViewModel y sus dependencias ---
-    val userRepository = UserRepository()
-    val getUserInfoUseCase = GetUserInfoUseCase(userRepository)
-    val userViewModel = UserViewModel(getUserInfoUseCase)
+    val userRepository = remember { UserRepository() }
+    val getUserInfoUseCase = remember { GetUserInfoUseCase(userRepository) }
+    val userViewModel = remember { UserViewModel(getUserInfoUseCase) }
+
+    // ====== INSTANCIAS ESTABLES (IMPORTANTÍSIMO) ======
+    val db = remember { FirebaseFirestore.getInstance() }
+    val storage = remember { FirebaseStorage.getInstance() }
 
     // ====== ESTADO GLOBAL DEL CHAT (overlay) ======
     var showChat by rememberSaveable { mutableStateOf(false) }
 
-    // TODO: reemplazar por la URL real del entrenador (ya cuando exista sesión)
-    val trainerPhotoUrl = remember { "" }
-
-    val chatRepo = remember {
-        ChatRepository(
-            db = FirebaseFirestore.getInstance(),
-            storage = FirebaseStorage.getInstance()
-        )
+    // ====== ID DEPORTISTA (UID) ======
+    val athleteId = remember {
+        FirebaseAuth.getInstance().currentUser?.uid.orEmpty()
     }
-    val chatVm = remember { ChatViewModel(chatRepo) }
+
+    // ====== Trainer bubble (Realtime Database) ======
+    val trainerRepo = remember { TrainerRealtimeRepository(FirebaseDatabase.getInstance()) }
+    val trainerBubbleVm = remember { TrainerBubbleViewModel(trainerRepo) }
 
     // ====== RUTA ACTUAL ======
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
 
     // Mostrar burbuja SOLO en pantallas post-login
-    // Ajusta esta lista a tus rutas finales.
     val showBubble = currentRoute in setOf(
         "athleteMain"
-        // si luego tienes más rutas post-login, agrégalas aquí:
-        // "trainerMain", "home", "profile", etc.
     )
 
     // Si navega a login/logo/session_checker, cierra el popup por si quedó abierto
     LaunchedEffect(showBubble) {
         if (!showBubble) showChat = false
     }
+
+    // ====== TrainerId actual (desde bubble VM) ======
+    // Ajusta el nombre según tu TrainerBubbleViewModel. La idea:
+    // - cuando el VM encuentre el entrenador, debe exponer trainerId.
+    // Si tu VM ya lo expone con otro nombre, cámbialo aquí.
+    val trainerId: String = trainerBubbleVm.trainerId.collectAsState(initial = "").value
 
     Box(Modifier.fillMaxSize()) {
 
@@ -108,24 +122,31 @@ fun AppNavigation() {
         }
 
         // ====== BURBUJA + POPUP SOLO POST-LOGIN ======
-        if (showBubble) {
-            TrainerChatBubble(
-                photoUrl = trainerPhotoUrl,
+        if (showBubble && athleteId.isNotBlank()) {
+
+            TrainerBubbleHost(
+                athleteId = athleteId,
+                vm = trainerBubbleVm,
                 modifier = Modifier
                     .align(Alignment.BottomStart)
                     .navigationBarsPadding()
                     .padding(start = 16.dp, bottom = 16.dp),
-                onClick = { showChat = true }
+                //onClick = { showChat = true }
             )
 
-            if (showChat) {
-                ChatPopupDialog(onDismiss = { showChat = false }) {
-                    ChatScreen(
-                        vm = chatVm,
-                        onPickImage = { /* TODO: abrir picker */ },
-                        onRecordAudio = { /* TODO: grabar */ }
-                    )
-                }
+            // ✅ AQUÍ: usa ChatPopup, no ChatPopupDialog directo
+            ChatPopup(
+                show = showChat,
+                onDismiss = { showChat = false },
+                title = "Chat",
+                uid = athleteId,
+                otherUid = trainerId,
+                role = "deportista",
+                conversationId = null,
+                db = db,
+                storage = storage
+            ) { vm, state ->
+                ChatConversationContent(vm = vm, state = state)
             }
         }
     }

@@ -1,28 +1,31 @@
+// ===============================================
+// FILE 1: com.example.mvt.chat.ui.screen.ChatPopup.kt
+// ===============================================
 package com.example.mvt.chat.ui.screen
 
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
+import android.util.Log
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Divider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.ui.Alignment
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.mvt.chat.data.repo.ChatRepository
+import com.example.mvt.chat.viewmodel.ChatUiState
+import com.example.mvt.chat.viewmodel.ChatViewModel
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 
+// =====================================================
+// 1) DIALOG
+// =====================================================
 @Composable
 fun ChatPopupDialog(
     onDismiss: () -> Unit,
@@ -39,7 +42,6 @@ fun ChatPopupDialog(
         ) {
             Column(Modifier.fillMaxSize()) {
 
-                // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -55,11 +57,70 @@ fun ChatPopupDialog(
 
                 Divider()
 
-                // Body
                 Box(modifier = Modifier.fillMaxSize()) {
                     content()
                 }
             }
         }
+    }
+}
+
+// =====================================================
+// 2) FACTORY PARA INYECTAR repo EN VM
+// =====================================================
+class ChatViewModelFactory(
+    private val repo: ChatRepository
+) : ViewModelProvider.Factory {
+    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+        if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
+            @Suppress("UNCHECKED_CAST")
+            return ChatViewModel(repo) as T
+        }
+        throw IllegalArgumentException("Unknown ViewModel class")
+    }
+}
+
+// =====================================================
+// 3) ChatPopup (usa VM interno + init + dialog)
+// =====================================================
+@Composable
+fun ChatPopup(
+    show: Boolean,
+    onDismiss: () -> Unit,
+    title: String = "Chat",
+    uid: String,
+    otherUid: String,
+    role: String = "deportista",
+    conversationId: String? = null,
+    db: FirebaseFirestore,
+    storage: FirebaseStorage,
+    content: @Composable (vm: ChatViewModel, state: ChatUiState) -> Unit
+) {
+    SideEffect {
+        Log.e("ChatUI", "ChatPopup composed show=$show uid='$uid' otherUid='$otherUid' role=$role convoId=$conversationId")
+    }
+
+    if (!show) return
+
+    val repo = remember(db, storage) { ChatRepository(db, storage) }
+    val vm: ChatViewModel = viewModel(factory = ChatViewModelFactory(repo))
+
+    LaunchedEffect(uid, otherUid, role, conversationId) {
+        Log.e("ChatUI", "LaunchedEffect fired -> repo.debugPing + vm.init")
+        repo.debugPing("ChatPopup.LaunchedEffect")
+        vm.init(uid = uid, otherUid = otherUid, role = role, conversationId = conversationId)
+    }
+
+    val state by vm.state.collectAsState()
+
+    LaunchedEffect(state.totalMessages, state.messages.size, state.isLoading) {
+        Log.e(
+            "ChatUI",
+            "ChatPopup state -> total=${state.totalMessages} uiMessages=${state.messages.size} isLoading=${state.isLoading}"
+        )
+    }
+
+    ChatPopupDialog(onDismiss = onDismiss, title = title) {
+        content(vm, state)
     }
 }

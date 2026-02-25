@@ -6,9 +6,11 @@ data class ChatMessage(
     val audioUrl: String = "",
     val imageUrl: String = "",
     val remitente: String = "",
-    val timestamp: String = "",   // ISO string (igual que web)
+    val timestamp: Int = 0,   // ISO string (igual que web)
     val rutina: String? = null
 )
+
+
 
 data class Conversation(
     val id: String = "",
@@ -20,7 +22,22 @@ data class Conversation(
 
 data class UiMessage(
     val msg: ChatMessage,
-    val dateGroup: String,
-    val showDateHeader: Boolean,
+    val groupLabel: String,
+    val showGroupHeader: Boolean,
     val isMine: Boolean
+)
+
+data class TrainerPersonalData(
+    val identificacion: String = "",
+    val nombres: String = "",
+    val apellidos: String = "",
+    val genero: String = "",
+    val email: String = "",
+    val fecha_nacimiento: Any? = null,
+    val pais: String = "",
+    val ciudad: String = "",
+    val telefono: String = "",
+    val direccion: String = "",
+    val formularioBienvenida: Any? = null,
+    val foto_url: String = ""
 )
