@@ -17,6 +17,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+
 data class ChatUiState(
     val isLoading: Boolean = true,
     val conversationId: String = "",
@@ -25,6 +26,7 @@ data class ChatUiState(
     val role: String = "deportista",
     val messageText: String = "",
     val replyingTo: ChatMessage? = null,
+    val replyTo: ChatMessage? = null, // alias opcional
     val editing: ChatMessage? = null,
     val audioUri: Uri? = null,
     val imageUri: Uri? = null,
@@ -43,13 +45,7 @@ class ChatViewModel(
 
     private var listener: ListenerRegistration? = null
 
-    init {
-        Log.e(TAG, "CREATED vm=${System.identityHashCode(this)} repo=${System.identityHashCode(repo)}")
-    }
-
     fun init(uid: String, otherUid: String, role: String, conversationId: String?) {
-        Log.e(TAG, "init() uid=$uid otherUid=$otherUid role=$role conversationId=$conversationId")
-
         _state.update { it.copy(uid = uid, otherUid = otherUid, role = role, isLoading = true) }
 
         viewModelScope.launch {
@@ -57,8 +53,6 @@ class ChatViewModel(
                 !conversationId.isNullOrBlank() -> conversationId
                 else -> repo.findConversationId(uid, otherUid)
             }
-
-            Log.e(TAG, "conversation resolved cid=${cid ?: "null"}")
 
             if (cid.isNullOrBlank()) {
                 _state.update { it.copy(isLoading = false) }
@@ -76,26 +70,21 @@ class ChatViewModel(
 
     private fun listen(conversationId: String) {
         listener?.remove()
-        Log.e(TAG, "VM listen() attach cid=$conversationId")
         _state.update { it.copy(isLoading = true) }
 
         listener = repo.listenConversation(conversationId) { list ->
-            Log.e(TAG, "VM listen() received listSize=${list.size}")
-
-            if (list.isNotEmpty()) {
-                Log.e(TAG, "VM sample first='${list.first().texto.take(40)}' last='${list.last().texto.take(40)}'")
-            }
-
             val myUid = _state.value.uid
-            val uiList = groupByDate(list, myUid)
 
-            Log.e(TAG, "VM uiListSize=${uiList.size}")
+            // Ordena robusto por ISO (y si llega algún legacy, cae a 0)
+            val sorted = list.sortedBy { isoToMillisSafe(it.timestamp) }
+
+            val uiList = groupByDate(sorted, myUid)
 
             _state.update {
                 it.copy(
                     isLoading = false,
                     messages = uiList,
-                    totalMessages = list.size
+                    totalMessages = sorted.size
                 )
             }
         }
@@ -106,11 +95,22 @@ class ChatViewModel(
     }
 
     fun setReply(msg: ChatMessage?) {
-        _state.update { it.copy(replyingTo = msg, editing = null) }
+        _state.update { it.copy(replyingTo = msg, replyTo = msg, editing = null) }
+    }
+
+    fun clearReply() {
+        _state.update { it.copy(replyingTo = null, replyTo = null) }
     }
 
     fun setEdit(msg: ChatMessage?) {
-        _state.update { it.copy(editing = msg, replyingTo = null, messageText = msg?.texto.orEmpty()) }
+        _state.update {
+            it.copy(
+                editing = msg,
+                replyingTo = null,
+                replyTo = null,
+                messageText = msg?.texto.orEmpty()
+            )
+        }
     }
 
     fun clearAttachments() {
@@ -125,6 +125,11 @@ class ChatViewModel(
         _state.update { it.copy(audioUri = uri, imageUri = null) }
     }
 
+    fun sendTextMessage(text: String, replyToMessageId: String? = null) {
+        _state.update { it.copy(messageText = text) }
+        sendMessage()
+    }
+
     fun sendMessage() {
         val st = _state.value
         val hasText = st.messageText.trim().isNotEmpty()
@@ -132,8 +137,8 @@ class ChatViewModel(
         if (!hasText && !hasMedia) return
 
         viewModelScope.launch {
+            // ✅ MISMO FORMATO QUE WEB
             val nowIso = isoNow()
-            val nowSeconds = isoToEpochSeconds(nowIso)
 
             var audioUrl = ""
             var imageUrl = ""
@@ -150,7 +155,7 @@ class ChatViewModel(
                 audioUrl = audioUrl,
                 imageUrl = imageUrl,
                 remitente = st.uid,
-                timestamp = nowSeconds, // <-- si tu modelo usa Long, cámbialo a nowSeconds.toLong()
+                timestamp = nowIso,          // ✅ ISO STRING
                 rutina = st.replyingTo?.rutina
             )
 
@@ -179,6 +184,7 @@ class ChatViewModel(
                 it.copy(
                     messageText = "",
                     replyingTo = null,
+                    replyTo = null,
                     editing = null,
                     audioUri = null,
                     imageUri = null
@@ -198,7 +204,6 @@ class ChatViewModel(
     }
 
     override fun onCleared() {
-        Log.e(TAG, "onCleared() removing listener")
         listener?.remove()
         super.onCleared()
     }
@@ -207,35 +212,33 @@ class ChatViewModel(
     // Helpers UI (headers fecha)
     // =========================
     private fun groupByDate(list: List<ChatMessage>, myUid: String): List<UiMessage> {
-        fun label(tsSeconds: Int): String {
-            val d = Date(tsSeconds.toLong() * 1000L)
-            val cal = Date().apply { hours = 0; minutes = 0; seconds = 0 }
-            val todayMs = cal.time
-            val yesterdayMs = todayMs - 86_400_000L
 
+        fun label(tsIso: String): String {
+            val ms = isoToMillisSafe(tsIso)
+            val d = Date(ms)
+
+            val todayStart = Date().apply { hours = 0; minutes = 0; seconds = 0 }.time
+            val yesterdayStart = todayStart - 86_400_000L
             val dayStart = Date(d.time).apply { hours = 0; minutes = 0; seconds = 0 }.time
 
             return when (dayStart) {
-                todayMs -> "Hoy"
-                yesterdayMs -> "Ayer"
+                todayStart -> "Hoy"
+                yesterdayStart -> "Ayer"
                 else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(d)
             }
         }
 
         var lastGroup = ""
         return list.map { m ->
-            val g = label(m.timestamp) // timestamp Int
+            val g = label(m.timestamp) // ✅ ISO
             val show = g != lastGroup
             lastGroup = g
 
-            // IMPORTANTÍSIMO:
-            // Construcción por POSICIÓN para evitar "No parameter with name 'message' found"
-            // Ajusta el orden si tu UiMessage está definido distinto.
             UiMessage(
-                m,                 // 1) ChatMessage
-                g,                 // 2) etiqueta de grupo
-                show,              // 3) mostrar header
-                m.remitente == myUid // 4) isMine
+                m,
+                g,
+                show,
+                m.remitente == myUid
             )
         }
     }
@@ -246,14 +249,13 @@ class ChatViewModel(
         return fmt.format(Date())
     }
 
-    private fun isoToEpochSeconds(iso: String): Int {
+    private fun isoToMillisSafe(iso: String): Long {
         return try {
             val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
             fmt.timeZone = TimeZone.getTimeZone("UTC")
-            val d = fmt.parse(iso) ?: return 0
-            (d.time / 1000L).toInt()
+            (fmt.parse(iso)?.time) ?: 0L
         } catch (_: Exception) {
-            0
+            0L
         }
     }
 }

@@ -77,15 +77,12 @@ fun AppNavigation() {
         "athleteMain"
     )
 
-    // Si navega a login/logo/session_checker, cierra el popup por si quedó abierto
+
     LaunchedEffect(showBubble) {
         if (!showBubble) showChat = false
     }
 
-    // ====== TrainerId actual (desde bubble VM) ======
-    // Ajusta el nombre según tu TrainerBubbleViewModel. La idea:
-    // - cuando el VM encuentre el entrenador, debe exponer trainerId.
-    // Si tu VM ya lo expone con otro nombre, cámbialo aquí.
+
     val trainerId: String = trainerBubbleVm.trainerId.collectAsState(initial = "").value
 
     Box(Modifier.fillMaxSize()) {
@@ -134,7 +131,6 @@ fun AppNavigation() {
                 //onClick = { showChat = true }
             )
 
-            // ✅ AQUÍ: usa ChatPopup, no ChatPopupDialog directo
             ChatPopup(
                 show = showChat,
                 onDismiss = { showChat = false },

@@ -21,14 +21,14 @@ class TrainerBubbleViewModel(
     private var startJob: Job? = null
 
     fun start(athleteId: String) {
-        // Evita dejar listeners/flows duplicados si se llama start() varias veces
+
         startJob?.cancel()
 
         startJob = repo.observeTrainerIdForAthlete(athleteId)
             .map { it.trim() }
             .distinctUntilChanged()
             .onEach { id ->
-                _trainerId.value = id  // <-- ESTO ES LO QUE FALTABA
+                _trainerId.value = id
 
                 if (id.isBlank()) {
                     _trainer.value = TrainerPersonalData()

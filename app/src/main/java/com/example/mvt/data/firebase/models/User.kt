@@ -2,7 +2,7 @@ package com.example.mvt.data.firebase.models
 
 data class User(
     val UserID: Int? = null,
-    val nombres: String? = null,          // 👈 Campo usado en el saludo
+    val nombres: String? = null,
     val apellidos: String? = null,
     val email: String? = null,
     val ciudadActual: String? = null,

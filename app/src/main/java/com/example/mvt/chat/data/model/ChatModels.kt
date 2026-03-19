@@ -6,7 +6,7 @@ data class ChatMessage(
     val audioUrl: String = "",
     val imageUrl: String = "",
     val remitente: String = "",
-    val timestamp: Int = 0,   // ISO string (igual que web)
+    val timestamp: String = "",
     val rutina: String? = null
 )
 

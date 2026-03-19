@@ -24,11 +24,7 @@ class ChatRepository(
         return "${x}_${y}"
     }
 
-    /**
-     * 1) Busca por participantsKey (rápido y directo).
-     * 2) Si no encuentra, hace fallback al método web: array-contains + includes.
-     *    Esto sirve mientras tus conversaciones viejas no tengan participantsKey.
-     */
+
     suspend fun findConversationId(uid: String, otherUid: String): String? {
         val key = participantsKey(uid, otherUid)
         Log.e(TAG, "[findConversationId] start uid=$uid otherUid=$otherUid key=$key")
@@ -147,7 +143,7 @@ class ChatRepository(
                         audioUrl = m["audioUrl"]?.toString().orEmpty(),
                         imageUrl = m["imageUrl"]?.toString().orEmpty(),
                         remitente = m["remitente"]?.toString().orEmpty(),
-                        timestamp = ts,
+                        timestamp = iso,
                         rutina = m["rutina"]?.toString()
                     )
                 }.sortedBy { it.timestamp }

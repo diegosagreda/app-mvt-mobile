@@ -126,9 +126,6 @@ class TrainerRealtimeRepository(
     }
 
     /**
-     * Tu estructura real (según captura):
-     * solicitudes/{pushId}/id_deportista
-     * solicitudes/{pushId}/id_entrenador
      * solicitudes/{pushId}/estado  -> "Aprobado" (equivale a match)
      */
     private fun verificarMatch(athleteId: String, solicitudesSnap: DataSnapshot): Pair<Boolean, String> {
