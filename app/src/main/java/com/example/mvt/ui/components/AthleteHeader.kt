@@ -61,6 +61,8 @@ fun AthleteHeader(
                         .padding(end = 6.dp)
                 )*/
                 Text(
+
+
                     text = "$saludo, $userName",
                     color = Color.White,
                     style = MaterialTheme.typography.titleSmall

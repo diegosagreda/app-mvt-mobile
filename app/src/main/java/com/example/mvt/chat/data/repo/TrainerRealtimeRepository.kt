@@ -134,7 +134,7 @@ class TrainerRealtimeRepository(
         for (child in solicitudesSnap.children) {
             val key = child.key.orEmpty()
 
-            val idDeportista = child.child("id_deportista").getValue(String::class.java).orEmpty()
+            val idDeportista = child.child("id_deportista").value?.toString().orEmpty()
             val idEntrenador = child.child("id_entrenador").getValue(String::class.java).orEmpty()
             val estado = child.child("estado").getValue(String::class.java).orEmpty()
 
