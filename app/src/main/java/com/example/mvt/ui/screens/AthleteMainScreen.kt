@@ -5,17 +5,12 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import androidx.navigation.compose.*
 import com.example.mvt.data.firebase.models.Routine
@@ -24,6 +19,7 @@ import com.example.mvt.ui.components.drawer.DrawerContent
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.viewmodels.RealtimeViewModel
 import com.example.mvt.ui.viewmodels.UserViewModel
+import com.example.mvt.ui.screens.personaldata.ProfileScreen
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -161,6 +157,12 @@ fun AthleteMainScreen(
                             Log.e("NavGraph", "❌ routine es NULL – mostrando fallback")
                             MissingRoutineScreen()
                         }
+                    }
+                    composable("profile"){
+                        ProfileScreen(
+                            userViewModel = userViewModel,
+                            navController = innerNavController
+                        )
                     }
 
                 }

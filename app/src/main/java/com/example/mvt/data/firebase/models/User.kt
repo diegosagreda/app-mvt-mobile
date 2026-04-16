@@ -13,6 +13,10 @@ data class User(
     val fecha_registro: Long? = null,
     val descripcion: String? = null,
     val NotiR: Boolean? = null,
-    val foto_url: String? = null
-
+    val foto_url: String? = null,
+    val nameUser: String? = null,
+    val telefono: String? = null,
+    val genero: String? = null,
+    val identificacion: String? = null,
+    val pais: String? = null,
     )
