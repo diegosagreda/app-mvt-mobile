@@ -16,6 +16,7 @@ import androidx.navigation.compose.*
 import com.example.mvt.data.firebase.models.Routine
 import com.example.mvt.ui.components.AthleteHeader
 import com.example.mvt.ui.components.drawer.DrawerContent
+import com.example.mvt.ui.screens.personaldata.MorphologyScreen
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.viewmodels.RealtimeViewModel
 import com.example.mvt.ui.viewmodels.UserViewModel
@@ -163,6 +164,9 @@ fun AthleteMainScreen(
                             userViewModel = userViewModel,
                             navController = innerNavController
                         )
+                    }
+                    composable("morphology") {
+                        MorphologyScreen(navController = innerNavController)
                     }
 
                 }

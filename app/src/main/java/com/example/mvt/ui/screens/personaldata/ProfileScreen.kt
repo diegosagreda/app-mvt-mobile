@@ -122,7 +122,12 @@ fun ProfileScreen(
                     .padding(bottom = 10.dp)
             ) {
                 IconButton(
-                    onClick = { navController.popBackStack() },
+                    onClick = {
+                        navController.navigate("routines") {
+                            popUpTo("routines") { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    },
                     modifier = Modifier.align(Alignment.CenterStart)
                 ) {
                     Icon(
