@@ -890,7 +890,9 @@ private fun PerimetroItem(
                     onClick = {
                         val millis = datePickerState.selectedDateMillis
                         if (millis != null) {
-                            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply {
+                                timeZone = TimeZone.getTimeZone("UTC")  // ← fuerza UTC
+                            }
                             onChange(medicion.copy(fecha = sdf.format(Date(millis))))
                         }
                         showDatePicker = false
