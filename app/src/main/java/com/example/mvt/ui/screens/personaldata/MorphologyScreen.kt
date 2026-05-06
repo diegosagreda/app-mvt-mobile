@@ -37,7 +37,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import com.example.mvt.data.firebase.models.Morphology
 import com.example.mvt.ui.theme.PrimaryBlue
+import com.example.mvt.ui.components.FormLabel
+import com.example.mvt.ui.components.FormSpacer
+import com.example.mvt.ui.components.FormTooltip
+import com.example.mvt.ui.components.formFieldColors
+import com.example.mvt.ui.components.formReadOnlyColors
+import com.example.mvt.ui.components.FormSuccessNotification
+import com.example.mvt.ui.components.FormErrorNotification
+import com.example.mvt.ui.viewmodels.MorphologyUiState
+import com.example.mvt.ui.viewmodels.MorphologyViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
@@ -48,7 +58,6 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
-
 data class PerimetroMedicion(
     val fecha: String = "",
     val medida: String = ""
@@ -57,7 +66,8 @@ data class PerimetroMedicion(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MorphologyScreen(
-    navController: NavController
+    navController: NavController,
+    morphologyViewModel: MorphologyViewModel
 ) {
     val uid = remember {
         FirebaseAuth.getInstance().currentUser?.uid ?: ""
@@ -75,7 +85,6 @@ fun MorphologyScreen(
     var showSuccess        by remember { mutableStateOf(false) }
     var showError          by remember { mutableStateOf(false) }
     var showDeleteSuccess by remember { mutableStateOf(false) }
-    var isLoading          by remember { mutableStateOf(true) }
 
     // === Errores de validación ===
     var estaturaError  by remember { mutableStateOf(false) }
@@ -100,42 +109,14 @@ fun MorphologyScreen(
     )
 
     val scrollState    = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
+
+    // === Observar ViewModel ===
+    val morphologyData by morphologyViewModel.morphology.collectAsState()
+    val uiState        by morphologyViewModel.uiState.collectAsState()
 
     // === Cargar datos desde Firebase ===
-    LaunchedEffect(uid) {
-        if (uid.isBlank()) {
-            isLoading = false
-            return@LaunchedEffect
-        }
-        try {
-            val snapshot = FirebaseDatabase.getInstance()
-                .getReference("Morfologias")
-                .child(uid)
-                .get()
-                .await()
-
-            // FIX 2: Leer también como Double/Long por si Firebase
-            // guardó número en vez de String
-            estatura   = leerCampoComoString(snapshot, "estatura")
-            peso       = leerCampoComoString(snapshot, "peso")
-            grasa      = leerCampoComoString(snapshot, "grasa")
-            imc        = leerCampoComoString(snapshot, "IMC")
-            somatotipo = leerCampoComoString(snapshot, "somatipo")
-
-            hombros     = cargarPerimetro(snapshot, "fecha_hombros",     "medida_hombros")
-            pecho       = cargarPerimetro(snapshot, "fecha_pecho",       "medida_pecho")
-            brazo       = cargarPerimetro(snapshot, "fecha_brazo",       "medida_brazo")
-            cintura     = cargarPerimetro(snapshot, "fecha_cintura",     "medida_cintura")
-            musloMedio  = cargarPerimetro(snapshot, "fecha_muslo",       "medida_muslo")
-            gluteos     = cargarPerimetro(snapshot, "fecha_gluteos",     "medida_gluteos")
-            pantorrilla = cargarPerimetro(snapshot, "fecha_pantorrilla", "medida_pantorrilla")
-
-        } catch (e: Exception) {
-            // campos quedan vacíos
-        } finally {
-            isLoading = false
-        }
+    LaunchedEffect(Unit) {
+        morphologyViewModel.loadMorphology()
     }
 
     // === Calcular IMC automáticamente ===
@@ -148,6 +129,36 @@ fun MorphologyScreen(
         } else ""
     }
 
+    // === Sincronizar campos cuando llegan los datos ===
+    LaunchedEffect(morphologyData) {
+        morphologyData?.let { data ->
+            estatura   = data.estatura ?: ""
+            peso       = data.peso ?: ""
+            grasa      = data.grasa ?: ""
+            imc        = data.imc ?: ""
+            somatotipo = data.somatipo ?: ""
+            hombros     = cargarPerimetroDesdeModelo(data.fecha_hombros,     data.medida_hombros)
+            pecho       = cargarPerimetroDesdeModelo(data.fecha_pecho,       data.medida_pecho)
+            brazo       = cargarPerimetroDesdeModelo(data.fecha_brazo,       data.medida_brazo)
+            cintura     = cargarPerimetroDesdeModelo(data.fecha_cintura,     data.medida_cintura)
+            musloMedio  = cargarPerimetroDesdeModelo(data.fecha_muslo,       data.medida_muslo)
+            gluteos     = cargarPerimetroDesdeModelo(data.fecha_gluteos,     data.medida_gluteos)
+            pantorrilla = cargarPerimetroDesdeModelo(data.fecha_pantorrilla, data.medida_pantorrilla)
+        }
+    }
+
+    // === Reaccionar a cambios de estado ===
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is MorphologyUiState.Saved  -> { showSuccess = true; morphologyViewModel.resetState() }
+            is MorphologyUiState.Error  -> { showError = true;   morphologyViewModel.resetState() }
+            else -> {}
+        }
+    }
+
+// === Loader desde uiState ===
+    val isLoading = uiState is MorphologyUiState.Loading
+
     // === Guardar en Firebase ===
     fun guardarMorfologia() {
         val estaturaNum = estatura.toDoubleOrNull()
@@ -158,8 +169,6 @@ fun MorphologyScreen(
         pesoError      = pesoNum == null || pesoNum < 31
         grasaError     = if (grasa.isBlank()) false
         else grasaNum == null || grasaNum < 4 || grasaNum > 50
-
-        // FIX 1: Validar también medida vacía cuando fecha NO está vacía
         perimetroError = listOf(hombros, pecho, brazo, cintura, musloMedio, gluteos, pantorrilla)
             .any { it.fecha.isNotBlank() && it.medida.isBlank() }
 
@@ -168,42 +177,30 @@ fun MorphologyScreen(
             return
         }
 
-        coroutineScope.launch {
-            try {
-                val updates = mapOf(
-                    "estatura"           to estatura,
-                    "peso"               to peso,
-                    "grasa"              to grasa,
-                    "IMC"                to imc,
-                    "somatipo"           to somatotipo,
-                    "fecha_hombros"      to fechaUIaIso(hombros.fecha),
-                    "medida_hombros"     to hombros.medida,
-                    "fecha_pecho"        to fechaUIaIso(pecho.fecha),
-                    "medida_pecho"       to pecho.medida,
-                    "fecha_brazo"        to fechaUIaIso(brazo.fecha),
-                    "medida_brazo"       to brazo.medida,
-                    "fecha_cintura"      to fechaUIaIso(cintura.fecha),
-                    "medida_cintura"     to cintura.medida,
-                    "fecha_muslo"        to fechaUIaIso(musloMedio.fecha),
-                    "medida_muslo"       to musloMedio.medida,
-                    "fecha_gluteos"      to fechaUIaIso(gluteos.fecha),
-                    "medida_gluteos"     to gluteos.medida,
-                    "fecha_pantorrilla"  to fechaUIaIso(pantorrilla.fecha),
-                    "medida_pantorrilla" to pantorrilla.medida
-                )
-
-                FirebaseDatabase.getInstance()
-                    .getReference("Morfologias")
-                    .child(uid)
-                    .updateChildren(updates)
-                    .await()
-
-                showSuccess = true
-
-            } catch (e: Exception) {
-                showError = true
-            }
-        }
+        // Construye el modelo y lo pasa al ViewModel
+        morphologyViewModel.saveMorphology(
+            Morphology(
+                estatura = estatura,
+                peso = peso,
+                grasa = grasa,
+                imc = imc,
+                somatipo = somatotipo.replace(Regex("^\\d+\\.\\s*"), ""),
+                fecha_hombros = fechaUIaIso(hombros.fecha),
+                medida_hombros = hombros.medida,
+                fecha_pecho = fechaUIaIso(pecho.fecha),
+                medida_pecho = pecho.medida,
+                fecha_brazo = fechaUIaIso(brazo.fecha),
+                medida_brazo = brazo.medida,
+                fecha_cintura = fechaUIaIso(cintura.fecha),
+                medida_cintura = cintura.medida,
+                fecha_muslo = fechaUIaIso(musloMedio.fecha),
+                medida_muslo = musloMedio.medida,
+                fecha_gluteos = fechaUIaIso(gluteos.fecha),
+                medida_gluteos = gluteos.medida,
+                fecha_pantorrilla = fechaUIaIso(pantorrilla.fecha),
+                medida_pantorrilla = pantorrilla.medida
+            )
+        )
     }
 
     // === Loader ===
@@ -281,7 +278,7 @@ fun MorphologyScreen(
             // ==========================================
             // ESTATURA
             // ==========================================
-            MorphoLabel(text = "Estatura (cm)", required = true, info = "En centímetros")
+            FormLabel(text = "Estatura (cm)", required = true, info = "En centímetros")
             OutlinedTextField(
                 value = estatura,
                 onValueChange = {
@@ -304,7 +301,7 @@ fun MorphologyScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                colors = morphoFieldColors()
+                colors = formFieldColors()
             )
             if (estaturaError) {
                 Text(
@@ -315,12 +312,12 @@ fun MorphologyScreen(
                 )
             }
 
-            MorphoSpacer()
+            FormSpacer()
 
             // ==========================================
             // PESO
             // ==========================================
-            MorphoLabel(text = "Peso (Kg)", required = true, info = "En Kilogramos")
+            FormLabel(text = "Peso (Kg)", required = true, info = "En Kilogramos")
             OutlinedTextField(
                 value = peso,
                 onValueChange = {
@@ -343,7 +340,7 @@ fun MorphologyScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                colors = morphoFieldColors()
+                colors = formFieldColors()
             )
             if (pesoError) {
                 Text(
@@ -354,12 +351,12 @@ fun MorphologyScreen(
                 )
             }
 
-            MorphoSpacer()
+            FormSpacer()
 
             // ==========================================
             // GRASA
             // ==========================================
-            MorphoLabel(
+            FormLabel(
                 text = "Grasa",
                 info = "Medida para distinguir la grasa del músculo, ideal mujer 20–30%, ideal hombre 10–20%"
             )
@@ -385,7 +382,7 @@ fun MorphologyScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                colors = morphoFieldColors()
+                colors = formFieldColors()
             )
             if (grasaError) {
                 Text(
@@ -396,12 +393,12 @@ fun MorphologyScreen(
                 )
             }
 
-            MorphoSpacer()
+            FormSpacer()
 
             // ==========================================
             // IMC
             // ==========================================
-            MorphoLabel(text = "IMC", info = "Índice de masa corporal, evalúa la obesidad, ideal 20-25")
+            FormLabel(text = "IMC", info = "Índice de masa corporal, evalúa la obesidad, ideal 20-25")
             OutlinedTextField(
                 value = imc,
                 onValueChange = {},
@@ -417,15 +414,15 @@ fun MorphologyScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = morphoReadOnlyColors()
+                colors = formReadOnlyColors()
             )
 
-            MorphoSpacer()
+            FormSpacer()
 
             // ==========================================
             // SOMATOTIPO
             // ==========================================
-            MorphoLabel(
+            FormLabel(
                 text = "Somatotipo",
                 info = "Hace referencia a tu forma corporal. Ectomorfo: Delgado, metabolismo rápido. " +
                         "Mesomorfo: Robusto, metabolismo normal. Endomorfo: Acumulas grasa, metabolismo lento."
@@ -444,7 +441,7 @@ fun MorphologyScreen(
                         .fillMaxWidth()
                         .menuAnchor(),
                     shape = RoundedCornerShape(8.dp),
-                    colors = morphoFieldColors(),
+                    colors = formFieldColors(),
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedSomatotipo)
                     }
@@ -480,7 +477,7 @@ fun MorphologyScreen(
                 }
             }
 
-            MorphoSpacer()
+            FormSpacer()
 
             // ==========================================
             // SECCIÓN PERÍMETROS
@@ -499,7 +496,7 @@ fun MorphologyScreen(
                     color = PrimaryBlue
                 )
                 Spacer(modifier = Modifier.width(6.dp))
-                MorphoTooltip("En centímetros para cada contorno")
+                FormTooltip("En centímetros para cada contorno")
             }
 
             Spacer(modifier = Modifier.height(4.dp))
@@ -604,19 +601,19 @@ fun MorphologyScreen(
 
         // === Notificaciones ===
         if (showSuccess) {
-            MorphoSuccessNotification(
+            FormSuccessNotification(
                 message = "¡Sus cambios han sido guardados con éxito!",
                 onDismiss = { showSuccess = false }
             )
         }
         if (showError) {
-            MorphoErrorNotification(
+            FormErrorNotification(
                 message = "Por favor completa los campos obligatorios",
                 onDismiss = { showError = false }
             )
         }
         if (showDeleteSuccess) {
-            MorphoSuccessNotification(
+            FormSuccessNotification(
                 message  = "¡Sus datos han sido eliminados correctamente!",
                 onDismiss = { showDeleteSuccess = false }
             )
@@ -628,20 +625,12 @@ fun MorphologyScreen(
 // HELPERS PRIVADOS
 // ==========================================
 
-// FIX 2: Lee un campo de Firebase como String sin importar
-// si Firebase lo guardó como String, Double o Long
-private fun leerCampoComoString(snapshot: DataSnapshot, key: String): String {
-    val value = snapshot.child(key).value ?: return ""
-    return when (value) {
-        is String -> value
-        is Double -> {
-            // Si es entero no muestra decimales innecesarios
-            if (value == kotlin.math.floor(value)) value.toInt().toString()
-            else value.toString()
-        }
-        is Long   -> value.toString()
-        else      -> value.toString()
-    }
+// Convierte fecha ISO a UI y crea el modelo de perímetro
+private fun cargarPerimetroDesdeModelo(fecha: String, medida: String): PerimetroMedicion {
+    return PerimetroMedicion(
+        fecha  = normalizarFechaParaUI(fecha),
+        medida = medida
+    )
 }
 
 private fun normalizarFechaParaUI(fechaRaw: String): String {
@@ -686,181 +675,6 @@ private fun fechaUIaIso(fecha: String): String {
     return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }.format(parsed)
-}
-
-private fun cargarPerimetro(
-    snapshot: DataSnapshot,
-    fechaKey: String,
-    medidaKey: String
-): PerimetroMedicion {
-    val fechaRaw  = snapshot.child(fechaKey).getValue(String::class.java).orEmpty()
-    val medidaRaw = leerCampoComoString(snapshot, medidaKey)
-    return PerimetroMedicion(
-        fecha  = normalizarFechaParaUI(fechaRaw),
-        medida = medidaRaw
-    )
-}
-
-@Composable
-private fun MorphoLabel(
-    text: String,
-    required: Boolean = false,
-    info: String? = null
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = buildAnnotatedString {
-                append(text)
-                if (required) {
-                    append(" ")
-                    withStyle(SpanStyle(color = Color.Red)) { append("*") }
-                }
-            },
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF555B61)
-        )
-        if (info != null) {
-            Spacer(modifier = Modifier.width(6.dp))
-            MorphoTooltip(info)
-        }
-    }
-    Spacer(modifier = Modifier.height(6.dp))
-}
-
-@Composable
-private fun MorphoSpacer() {
-    Spacer(modifier = Modifier.height(16.dp))
-}
-
-@Composable
-private fun morphoFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor   = PrimaryBlue,
-    unfocusedBorderColor = Color(0xFFCCCCCC),
-    cursorColor          = PrimaryBlue,
-    focusedTextColor     = Color(0xFF2B2E34),
-    unfocusedTextColor   = Color(0xFF2B2E34)
-)
-
-@Composable
-private fun morphoReadOnlyColors() = OutlinedTextFieldDefaults.colors(
-    disabledBorderColor     = Color(0xFFCCCCCC),
-    disabledTextColor       = Color(0xFF888888),
-    disabledContainerColor  = Color(0xFFF5F5F5),
-    disabledLabelColor      = Color(0xFF888888)
-)
-
-@Composable
-private fun MorphoTooltip(message: String) {
-    var show by remember { mutableStateOf(false) }
-    Box {
-        Icon(
-            imageVector = Icons.Default.HelpOutline,
-            contentDescription = null,
-            tint = PrimaryBlue,
-            modifier = Modifier
-                .size(18.dp)
-                .clickable { show = true }
-        )
-        if (show) {
-            Dialog(onDismissRequest = { show = false }) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White,
-                    border = BorderStroke(2.dp, PrimaryBlue),
-                    tonalElevation = 4.dp
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .widthIn(min = 200.dp, max = 280.dp)
-                    ) {
-                        Text(text = message, fontSize = 14.sp, color = Color(0xFF333333))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        TextButton(
-                            onClick = { show = false },
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text("OK", color = PrimaryBlue)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun MorphoSuccessNotification(message: String, onDismiss: () -> Unit) {
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(2500)
-        onDismiss()
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Surface(
-            color = Color(0xFF4CAF50),
-            shape = RoundedCornerShape(14.dp),
-            shadowElevation = 6.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(text = message, color = Color.White, fontSize = 14.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun MorphoErrorNotification(message: String, onDismiss: () -> Unit) {
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(2500)
-        onDismiss()
-    }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 20.dp),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Surface(
-            color = Color(0xFFD32F2F),
-            shape = RoundedCornerShape(14.dp),
-            shadowElevation = 8.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.HelpOutline,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text = message,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1005,7 +819,6 @@ private fun PerimetroItem(
             }
         )
     }
-
 
     Card(
         modifier = Modifier

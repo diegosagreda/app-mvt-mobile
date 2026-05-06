@@ -40,6 +40,13 @@ import coil.compose.AsyncImage
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.ui.viewmodels.UserViewModel
 import kotlinx.coroutines.launch
+import com.example.mvt.ui.components.FormLabel
+import com.example.mvt.ui.components.FormSpacer
+import com.example.mvt.ui.components.FormTooltip
+import com.example.mvt.ui.components.formFieldColors
+import com.example.mvt.ui.components.formReadOnlyColors
+import com.example.mvt.ui.components.FormSuccessNotification
+import com.example.mvt.ui.components.FormErrorNotification
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -170,7 +177,7 @@ fun ProfileScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = fieldColors()
+                colors = formFieldColors()
             )
 
             FormSpacer()
@@ -189,7 +196,7 @@ fun ProfileScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = fieldColors()
+                colors = formFieldColors()
             )
 
             FormSpacer()
@@ -208,7 +215,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                colors = fieldColors()
+                colors = formFieldColors()
             )
 
             FormSpacer()
@@ -224,7 +231,7 @@ fun ProfileScreen(
                 enabled = false,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = readOnlyFieldColors()
+                colors = formReadOnlyColors()
             )
 
             FormSpacer()
@@ -245,7 +252,7 @@ fun ProfileScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = readOnlyFieldColors(),
+                colors = formReadOnlyColors(),
                 trailingIcon = {
                     Icon(
                         imageVector = Icons.Default.ArrowDropDown,
@@ -275,7 +282,7 @@ fun ProfileScreen(
                         .fillMaxWidth()
                         .menuAnchor(),
                     shape = RoundedCornerShape(8.dp),
-                    colors = fieldColors(),
+                    colors = formFieldColors(),
                     trailingIcon = {
                         ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedPais)
                     }
@@ -330,7 +337,7 @@ fun ProfileScreen(
                 singleLine = true,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = fieldColors()
+                colors = formFieldColors()
             )
 
             FormSpacer()
@@ -349,7 +356,7 @@ fun ProfileScreen(
                 enabled = false,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = readOnlyFieldColors()
+                colors = formReadOnlyColors()
             )
 
             FormSpacer()
@@ -364,7 +371,7 @@ fun ProfileScreen(
                 enabled = false,
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
-                colors = readOnlyFieldColors()
+                colors = formReadOnlyColors()
             )
 
             FormSpacer()
@@ -384,7 +391,7 @@ fun ProfileScreen(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(8.dp),
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone),
-                colors = fieldColors()
+                colors = formFieldColors()
             )
             Spacer(modifier = Modifier.height(32.dp))
         }
@@ -457,27 +464,23 @@ fun ProfileScreen(
             }
         }
     }
-
-
     // === Notificación flotante de éxito ===
     if (showSuccess) {
-        SuccessNotification(
+        FormSuccessNotification(
             message = "¡Sus cambios han sido guardados con éxito!",
             onDismiss = { showSuccess = false }
         )
     }
     if (showError) {
-        ErrorNotification(
+        FormErrorNotification(
             message = "Por favor complete todos los campos obligatorios",
             onDismiss = { showError = false }
         )
     }
 }
 
-
 // HELPERS PRIVADOS
 // ==========================================
-
 private fun formatFecha(fecha: String?): String {
     return try {
         val datePart = fecha?.split("T")?.get(0)
@@ -487,54 +490,6 @@ private fun formatFecha(fecha: String?): String {
         fecha ?: ""
     }
 }
-
-@Composable
-private fun FormLabel(
-    text: String,
-    required: Boolean = false,
-    info: String? = null
-) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = buildAnnotatedString {
-                append(text)
-                if (required) {
-                    append(" ")
-                    withStyle(SpanStyle(color = Color.Red)) { append("*") }
-                }
-            },
-            fontSize = 14.sp,
-            fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF555B61)
-        )
-        if (info != null) {
-            Spacer(modifier = Modifier.width(6.dp))
-            InfoTooltip(info)
-        }
-    }
-    Spacer(modifier = Modifier.height(6.dp))
-}
-
-@Composable
-private fun FormSpacer() {
-    Spacer(modifier = Modifier.height(16.dp))
-}
-
-@Composable
-private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor = PrimaryBlue,
-    unfocusedBorderColor = Color(0xFFCCCCCC),
-    cursorColor = PrimaryBlue,
-    focusedLabelColor = PrimaryBlue
-)
-
-@Composable
-private fun readOnlyFieldColors() = OutlinedTextFieldDefaults.colors(
-    disabledBorderColor = Color(0xFFCCCCCC),
-    disabledTextColor = Color(0xFF888888),
-    disabledContainerColor = Color(0xFFF5F5F5)
-)
-
 @Composable
 private fun ProfileImageSection(
     imageUrl: String?,
@@ -616,135 +571,10 @@ private fun ProfileImageSection(
 
             Spacer(modifier = Modifier.width(6.dp))
 
-            InfoTooltip("Máximo 2MB, formato JPG, PNG")
+            FormTooltip("Máximo 2MB, formato JPG, PNG")
         }
     }
 }
-
-@Composable
-private fun InfoTooltip(message: String) {
-    var show by remember { mutableStateOf(false) }
-
-    Box {
-        Icon(
-            imageVector = Icons.Default.HelpOutline,
-            contentDescription = null,
-            tint = PrimaryBlue,
-            modifier = Modifier
-                .size(18.dp)
-                .clickable { show = true }
-        )
-        if (show) {
-            Dialog(onDismissRequest = { show = false }) {
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = Color.White,
-                    border = BorderStroke(2.dp, PrimaryBlue),
-                    tonalElevation = 4.dp
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .widthIn(min = 200.dp, max = 280.dp)
-                    ) {
-                        Text(text = message, fontSize = 14.sp, color = Color(0xFF333333))
-                        Spacer(modifier = Modifier.height(12.dp))
-                        TextButton(
-                            onClick = { show = false },
-                            modifier = Modifier.align(Alignment.End)
-                        ) {
-                            Text("OK", color = PrimaryBlue)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SuccessNotification(
-    message: String,
-    onDismiss: () -> Unit
-) {
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(2500)
-        onDismiss()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Surface(
-            color = Color(0xFF4CAF50),
-            shape = RoundedCornerShape(14.dp),
-            shadowElevation = 6.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.CheckCircle,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(text = message, color = Color.White, fontSize = 14.sp)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ErrorNotification(
-    message: String,
-    onDismiss: () -> Unit
-) {
-    LaunchedEffect(Unit) {
-        kotlinx.coroutines.delay(2500)
-        onDismiss()
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = 20.dp),
-        contentAlignment = Alignment.TopCenter
-    ) {
-        Surface(
-            color = Color(0xFFD32F2F),
-            shape = RoundedCornerShape(14.dp),
-            shadowElevation = 8.dp
-        ) {
-            Row(
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    imageVector = Icons.Default.HelpOutline,
-                    contentDescription = null,
-                    tint = Color.White,
-                    modifier = Modifier.size(22.dp)
-                )
-
-                Spacer(modifier = Modifier.width(10.dp))
-
-                Text(
-                    text = message,
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
-    }
-}
-
 private fun onlyLettersAndSpaces(value: String): String {
     return value.filter { it.isLetter() || it.isWhitespace() }
 }

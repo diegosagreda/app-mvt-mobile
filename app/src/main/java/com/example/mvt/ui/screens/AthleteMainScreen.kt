@@ -21,6 +21,7 @@ import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.viewmodels.RealtimeViewModel
 import com.example.mvt.ui.viewmodels.UserViewModel
 import com.example.mvt.ui.screens.personaldata.ProfileScreen
+import com.example.mvt.ui.viewmodels.MorphologyViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -37,7 +38,7 @@ fun AthleteMainScreen(
     val innerNavController = rememberNavController()
 
     val realtimeViewModel: RealtimeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
-
+    val morphologyViewModel: MorphologyViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     // === Usuario ===
     val user by userViewModel.user.collectAsState()
     LaunchedEffect(Unit) {
@@ -166,7 +167,10 @@ fun AthleteMainScreen(
                         )
                     }
                     composable("morphology") {
-                        MorphologyScreen(navController = innerNavController)
+                        MorphologyScreen(
+                            navController      = innerNavController,
+                            morphologyViewModel = morphologyViewModel
+                        )
                     }
 
                 }
