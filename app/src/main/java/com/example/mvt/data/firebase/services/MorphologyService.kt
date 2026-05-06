@@ -9,7 +9,7 @@ class MorphologyService {
 
     private val db = FirebaseDatabase.getInstance().getReference("Morfologias")
 
-    // === Leer morfología del deportista ===
+    // === Leer morfología del deportista y capacidad fisica===
     suspend fun getMorphology(uid: String): Morphology? {
         return try {
             val snapshot = db.child(uid).get().await()
@@ -34,14 +34,16 @@ class MorphologyService {
                 fecha_gluteos     = leerCampo(snapshot, "fecha_gluteos"),
                 medida_gluteos    = leerCampo(snapshot, "medida_gluteos"),
                 fecha_pantorrilla = leerCampo(snapshot, "fecha_pantorrilla"),
-                medida_pantorrilla = leerCampo(snapshot, "medida_pantorrilla")
+                medida_pantorrilla = leerCampo(snapshot, "medida_pantorrilla"),
+                FCmin = leerCampo(snapshot, "FCmin"),
+                FCmax = leerCampo(snapshot, "FCmax")
             )
         } catch (e: Exception) {
             Log.e("MorphologyService", "Error al obtener morfología", e)
             null
         }
     }
-    // === Guardar morfología ===
+    // === Guardar morfología y capacidad fisica===
     suspend fun saveMorphology(uid: String, morphology: Morphology) {
         try {
             val updates = mapOf(
@@ -63,7 +65,9 @@ class MorphologyService {
                 "fecha_gluteos"       to morphology.fecha_gluteos,
                 "medida_gluteos"      to morphology.medida_gluteos,
                 "fecha_pantorrilla"   to morphology.fecha_pantorrilla,
-                "medida_pantorrilla"  to morphology.medida_pantorrilla
+                "medida_pantorrilla"  to morphology.medida_pantorrilla,
+                "FCmin" to morphology.FCmin,
+                "FCmax" to morphology.FCmax
             )
             db.child(uid).updateChildren(updates).await()
             Log.d("MorphologyService", "Morfología guardada correctamente")

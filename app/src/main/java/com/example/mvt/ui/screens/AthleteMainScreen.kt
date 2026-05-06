@@ -17,11 +17,13 @@ import com.example.mvt.data.firebase.models.Routine
 import com.example.mvt.ui.components.AthleteHeader
 import com.example.mvt.ui.components.drawer.DrawerContent
 import com.example.mvt.ui.screens.personaldata.MorphologyScreen
+import com.example.mvt.ui.screens.personaldata.PhysicalCapacityScreen
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.viewmodels.RealtimeViewModel
 import com.example.mvt.ui.viewmodels.UserViewModel
 import com.example.mvt.ui.screens.personaldata.ProfileScreen
 import com.example.mvt.ui.viewmodels.MorphologyViewModel
+import com.example.mvt.ui.viewmodels.PhysicalCapacityViewModel
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -39,6 +41,8 @@ fun AthleteMainScreen(
 
     val realtimeViewModel: RealtimeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val morphologyViewModel: MorphologyViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val physicalCapacityViewModel: PhysicalCapacityViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+
     // === Usuario ===
     val user by userViewModel.user.collectAsState()
     LaunchedEffect(Unit) {
@@ -170,6 +174,12 @@ fun AthleteMainScreen(
                         MorphologyScreen(
                             navController      = innerNavController,
                             morphologyViewModel = morphologyViewModel
+                        )
+                    }
+                    composable("fitness") {
+                        PhysicalCapacityScreen(
+                            navController = innerNavController,
+                            viewModel     = physicalCapacityViewModel
                         )
                     }
 
