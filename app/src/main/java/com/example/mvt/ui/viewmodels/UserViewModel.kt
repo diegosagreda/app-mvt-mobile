@@ -1,115 +1,106 @@
 package com.example.mvt.ui.viewmodels
 
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mvt.data.firebase.models.User
+import com.example.mvt.domain.repositories.UserRepository
 import com.example.mvt.domain.usecases.GetUserInfoUseCase
-import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.FirebaseDatabase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.tasks.await
+
+// === Estados posibles de la pantalla de perfil ===
+sealed class ProfileUiState {
+    object Idle    : ProfileUiState()
+    object Loading : ProfileUiState()
+    object Saved   : ProfileUiState()
+    data class Error(val message: String) : ProfileUiState()
+}
 
 class UserViewModel(
     private val getUserInfoUseCase: GetUserInfoUseCase
 ) : ViewModel() {
 
+    private val repository = UserRepository()
+
+    // === Estado del usuario ===
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user
 
+    // === Estado de la UI ===
+    private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
+    val uiState: StateFlow<ProfileUiState> = _uiState
+
+    // === Cargar usuario ===
     fun loadUserInfo() {
         viewModelScope.launch {
-            val userInfo = getUserInfoUseCase()
-            Log.d("UserViewModel", "Usuario cargado: ${userInfo?.nombres}, Foto: ${userInfo?.foto_url}")
-            _user.value = userInfo
+            _uiState.value = ProfileUiState.Loading
+            try {
+                val userInfo = getUserInfoUseCase()
+                Log.d("UserViewModel", "Usuario cargado: ${userInfo?.nombres}")
+                _user.value  = userInfo
+                _uiState.value = ProfileUiState.Idle
+            } catch (e: Exception) {
+                Log.e("UserViewModel", "Error cargando usuario", e)
+                _uiState.value = ProfileUiState.Error("Error al cargar los datos")
+            }
         }
     }
+
+    // === Actualizar perfil ===
     fun updateUser(
-        nombres: String,
-        apellidos: String,
-        telefono: String,
-        genero: String,
+        nombres:      String,
+        apellidos:    String,
+        telefono:     String,
+        genero:       String,
         nacionalidad: String,
-        alias: String,
-        documento: String,
-        onSuccess: () -> Unit,
-        onError: () -> Unit
+        alias:        String,
+        documento:    String,
+        onSuccess:    () -> Unit,
+        onError:      () -> Unit
     ) {
         viewModelScope.launch {
             try {
-                val uid = FirebaseAuth.getInstance().currentUser?.uid
-
-                if (uid == null) {
-                    onError()
-                    return@launch
-                }
-
-                val ref = FirebaseDatabase
-                    .getInstance()
-                    .getReference("users")
-                    .child(uid)
-
-                val updates = mapOf(
-                    "nombres" to nombres,
-                    "apellidos" to apellidos,
-                    "telefono" to telefono,
-                    "genero" to genero,
-                    "pais" to nacionalidad,
-                    "nameUser" to alias,
-                    "identificacion" to documento
+                repository.updateUser(
+                    nombres      = nombres,
+                    apellidos    = apellidos,
+                    telefono     = telefono,
+                    genero       = genero,
+                    nacionalidad = nacionalidad,
+                    alias        = alias,
+                    documento    = documento
                 )
-
-                ref.updateChildren(updates)
-                    .addOnSuccessListener {
-                        onSuccess()
-                    }
-                    .addOnFailureListener {
-                        onError()
-                    }
-
+                // Recarga el usuario para reflejar cambios
+                _user.value = getUserInfoUseCase()
+                _uiState.value = ProfileUiState.Saved
+                onSuccess()
             } catch (e: Exception) {
+                Log.e("UserViewModel", "Error actualizando usuario", e)
+                _uiState.value = ProfileUiState.Error("Error al guardar los datos")
                 onError()
             }
         }
     }
 
-    // === Subir foto de perfil a Storage y actualizar URL en DB ===
-    fun uploadProfilePhoto(uri: android.net.Uri) {
+    // === Subir foto de perfil ===
+    fun uploadProfilePhoto(uri: Uri) {
         viewModelScope.launch {
             try {
-                val uid = com.google.firebase.auth.FirebaseAuth.getInstance()
-                    .currentUser?.uid ?: return@launch
-
-                //Subir imagen a Firebase Storage
-                val storageRef = com.google.firebase.storage.FirebaseStorage
-                    .getInstance()
-                    .getReference("profile_photos/$uid.jpg")
-
-                storageRef.putFile(uri).await()
-
-                //Obtener la URL pública
-                val downloadUrl = storageRef.downloadUrl.await().toString()
-
-                //Guardar URL en Realtime Database
-                com.google.firebase.database.FirebaseDatabase
-                    .getInstance()
-                    .getReference("users")
-                    .child(uid)
-                    .child("foto_url")
-                    .setValue(downloadUrl)
-                    .await()
-
-                //Recargar usuario para reflejar cambio
-                loadUserInfo()
-
-                Log.d("UPLOAD_PHOTO", "Foto actualizada correctamente")
-
+                repository.uploadProfilePhoto(uri)
+                // Recarga usuario para mostrar nueva foto
+                _user.value = getUserInfoUseCase()
+                Log.d("UserViewModel", "Foto subida correctamente")
             } catch (e: Exception) {
-                Log.e("UPLOAD_PHOTO", "Error al subir foto", e)
+                Log.e("UserViewModel", "Error subiendo foto", e)
+                _uiState.value = ProfileUiState.Error("Error al subir la foto")
             }
         }
     }
-}
 
+    // === Resetear estado ===
+    fun resetState() {
+        _uiState.value = ProfileUiState.Idle
+    }
+}

@@ -37,6 +37,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import com.example.mvt.data.firebase.models.Morphology
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.ui.components.FormLabel
 import com.example.mvt.ui.components.FormSpacer
@@ -45,6 +46,8 @@ import com.example.mvt.ui.components.formFieldColors
 import com.example.mvt.ui.components.formReadOnlyColors
 import com.example.mvt.ui.components.FormSuccessNotification
 import com.example.mvt.ui.components.FormErrorNotification
+import com.example.mvt.ui.viewmodels.MorphologyUiState
+import com.example.mvt.ui.viewmodels.MorphologyViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.FirebaseDatabase
@@ -63,7 +66,8 @@ data class PerimetroMedicion(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MorphologyScreen(
-    navController: NavController
+    navController: NavController,
+    morphologyViewModel: MorphologyViewModel
 ) {
     val uid = remember {
         FirebaseAuth.getInstance().currentUser?.uid ?: ""
@@ -81,7 +85,6 @@ fun MorphologyScreen(
     var showSuccess        by remember { mutableStateOf(false) }
     var showError          by remember { mutableStateOf(false) }
     var showDeleteSuccess by remember { mutableStateOf(false) }
-    var isLoading          by remember { mutableStateOf(true) }
 
     // === Errores de validación ===
     var estaturaError  by remember { mutableStateOf(false) }
@@ -106,42 +109,14 @@ fun MorphologyScreen(
     )
 
     val scrollState    = rememberScrollState()
-    val coroutineScope = rememberCoroutineScope()
+
+    // === Observar ViewModel ===
+    val morphologyData by morphologyViewModel.morphology.collectAsState()
+    val uiState        by morphologyViewModel.uiState.collectAsState()
 
     // === Cargar datos desde Firebase ===
-    LaunchedEffect(uid) {
-        if (uid.isBlank()) {
-            isLoading = false
-            return@LaunchedEffect
-        }
-        try {
-            val snapshot = FirebaseDatabase.getInstance()
-                .getReference("Morfologias")
-                .child(uid)
-                .get()
-                .await()
-
-            // FIX 2: Leer también como Double/Long por si Firebase
-            // guardó número en vez de String
-            estatura   = leerCampoComoString(snapshot, "estatura")
-            peso       = leerCampoComoString(snapshot, "peso")
-            grasa      = leerCampoComoString(snapshot, "grasa")
-            imc        = leerCampoComoString(snapshot, "IMC")
-            somatotipo = leerCampoComoString(snapshot, "somatipo")
-
-            hombros     = cargarPerimetro(snapshot, "fecha_hombros",     "medida_hombros")
-            pecho       = cargarPerimetro(snapshot, "fecha_pecho",       "medida_pecho")
-            brazo       = cargarPerimetro(snapshot, "fecha_brazo",       "medida_brazo")
-            cintura     = cargarPerimetro(snapshot, "fecha_cintura",     "medida_cintura")
-            musloMedio  = cargarPerimetro(snapshot, "fecha_muslo",       "medida_muslo")
-            gluteos     = cargarPerimetro(snapshot, "fecha_gluteos",     "medida_gluteos")
-            pantorrilla = cargarPerimetro(snapshot, "fecha_pantorrilla", "medida_pantorrilla")
-
-        } catch (e: Exception) {
-            // campos quedan vacíos
-        } finally {
-            isLoading = false
-        }
+    LaunchedEffect(Unit) {
+        morphologyViewModel.loadMorphology()
     }
 
     // === Calcular IMC automáticamente ===
@@ -154,6 +129,36 @@ fun MorphologyScreen(
         } else ""
     }
 
+    // === Sincronizar campos cuando llegan los datos ===
+    LaunchedEffect(morphologyData) {
+        morphologyData?.let { data ->
+            estatura   = data.estatura ?: ""
+            peso       = data.peso ?: ""
+            grasa      = data.grasa ?: ""
+            imc        = data.imc ?: ""
+            somatotipo = data.somatipo ?: ""
+            hombros     = cargarPerimetroDesdeModelo(data.fecha_hombros,     data.medida_hombros)
+            pecho       = cargarPerimetroDesdeModelo(data.fecha_pecho,       data.medida_pecho)
+            brazo       = cargarPerimetroDesdeModelo(data.fecha_brazo,       data.medida_brazo)
+            cintura     = cargarPerimetroDesdeModelo(data.fecha_cintura,     data.medida_cintura)
+            musloMedio  = cargarPerimetroDesdeModelo(data.fecha_muslo,       data.medida_muslo)
+            gluteos     = cargarPerimetroDesdeModelo(data.fecha_gluteos,     data.medida_gluteos)
+            pantorrilla = cargarPerimetroDesdeModelo(data.fecha_pantorrilla, data.medida_pantorrilla)
+        }
+    }
+
+    // === Reaccionar a cambios de estado ===
+    LaunchedEffect(uiState) {
+        when (uiState) {
+            is MorphologyUiState.Saved  -> { showSuccess = true; morphologyViewModel.resetState() }
+            is MorphologyUiState.Error  -> { showError = true;   morphologyViewModel.resetState() }
+            else -> {}
+        }
+    }
+
+// === Loader desde uiState ===
+    val isLoading = uiState is MorphologyUiState.Loading
+
     // === Guardar en Firebase ===
     fun guardarMorfologia() {
         val estaturaNum = estatura.toDoubleOrNull()
@@ -164,8 +169,6 @@ fun MorphologyScreen(
         pesoError      = pesoNum == null || pesoNum < 31
         grasaError     = if (grasa.isBlank()) false
         else grasaNum == null || grasaNum < 4 || grasaNum > 50
-
-        // FIX 1: Validar también medida vacía cuando fecha NO está vacía
         perimetroError = listOf(hombros, pecho, brazo, cintura, musloMedio, gluteos, pantorrilla)
             .any { it.fecha.isNotBlank() && it.medida.isBlank() }
 
@@ -174,42 +177,30 @@ fun MorphologyScreen(
             return
         }
 
-        coroutineScope.launch {
-            try {
-                val updates = mapOf(
-                    "estatura"           to estatura,
-                    "peso"               to peso,
-                    "grasa"              to grasa,
-                    "IMC"                to imc,
-                    "somatipo"           to somatotipo,
-                    "fecha_hombros"      to fechaUIaIso(hombros.fecha),
-                    "medida_hombros"     to hombros.medida,
-                    "fecha_pecho"        to fechaUIaIso(pecho.fecha),
-                    "medida_pecho"       to pecho.medida,
-                    "fecha_brazo"        to fechaUIaIso(brazo.fecha),
-                    "medida_brazo"       to brazo.medida,
-                    "fecha_cintura"      to fechaUIaIso(cintura.fecha),
-                    "medida_cintura"     to cintura.medida,
-                    "fecha_muslo"        to fechaUIaIso(musloMedio.fecha),
-                    "medida_muslo"       to musloMedio.medida,
-                    "fecha_gluteos"      to fechaUIaIso(gluteos.fecha),
-                    "medida_gluteos"     to gluteos.medida,
-                    "fecha_pantorrilla"  to fechaUIaIso(pantorrilla.fecha),
-                    "medida_pantorrilla" to pantorrilla.medida
-                )
-
-                FirebaseDatabase.getInstance()
-                    .getReference("Morfologias")
-                    .child(uid)
-                    .updateChildren(updates)
-                    .await()
-
-                showSuccess = true
-
-            } catch (e: Exception) {
-                showError = true
-            }
-        }
+        // Construye el modelo y lo pasa al ViewModel
+        morphologyViewModel.saveMorphology(
+            Morphology(
+                estatura = estatura,
+                peso = peso,
+                grasa = grasa,
+                imc = imc,
+                somatipo = somatotipo.replace(Regex("^\\d+\\.\\s*"), ""),
+                fecha_hombros = fechaUIaIso(hombros.fecha),
+                medida_hombros = hombros.medida,
+                fecha_pecho = fechaUIaIso(pecho.fecha),
+                medida_pecho = pecho.medida,
+                fecha_brazo = fechaUIaIso(brazo.fecha),
+                medida_brazo = brazo.medida,
+                fecha_cintura = fechaUIaIso(cintura.fecha),
+                medida_cintura = cintura.medida,
+                fecha_muslo = fechaUIaIso(musloMedio.fecha),
+                medida_muslo = musloMedio.medida,
+                fecha_gluteos = fechaUIaIso(gluteos.fecha),
+                medida_gluteos = gluteos.medida,
+                fecha_pantorrilla = fechaUIaIso(pantorrilla.fecha),
+                medida_pantorrilla = pantorrilla.medida
+            )
+        )
     }
 
     // === Loader ===
@@ -634,20 +625,12 @@ fun MorphologyScreen(
 // HELPERS PRIVADOS
 // ==========================================
 
-// FIX 2: Lee un campo de Firebase como String sin importar
-// si Firebase lo guardó como String, Double o Long
-private fun leerCampoComoString(snapshot: DataSnapshot, key: String): String {
-    val value = snapshot.child(key).value ?: return ""
-    return when (value) {
-        is String -> value
-        is Double -> {
-            // Si es entero no muestra decimales innecesarios
-            if (value == kotlin.math.floor(value)) value.toInt().toString()
-            else value.toString()
-        }
-        is Long   -> value.toString()
-        else      -> value.toString()
-    }
+// Convierte fecha ISO a UI y crea el modelo de perímetro
+private fun cargarPerimetroDesdeModelo(fecha: String, medida: String): PerimetroMedicion {
+    return PerimetroMedicion(
+        fecha  = normalizarFechaParaUI(fecha),
+        medida = medida
+    )
 }
 
 private fun normalizarFechaParaUI(fechaRaw: String): String {
@@ -692,19 +675,6 @@ private fun fechaUIaIso(fecha: String): String {
     return SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US).apply {
         timeZone = TimeZone.getTimeZone("UTC")
     }.format(parsed)
-}
-
-private fun cargarPerimetro(
-    snapshot: DataSnapshot,
-    fechaKey: String,
-    medidaKey: String
-): PerimetroMedicion {
-    val fechaRaw  = snapshot.child(fechaKey).getValue(String::class.java).orEmpty()
-    val medidaRaw = leerCampoComoString(snapshot, medidaKey)
-    return PerimetroMedicion(
-        fecha  = normalizarFechaParaUI(fechaRaw),
-        medida = medidaRaw
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
