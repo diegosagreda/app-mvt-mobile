@@ -22,5 +22,7 @@ data class Morphology(
     val fecha_gluteos: String = "",
     val medida_gluteos: String = "",
     val fecha_pantorrilla: String = "",
-    val medida_pantorrilla: String = ""
+    val medida_pantorrilla: String = "",
+    val FCmin: String = "",   // ← nuevo
+    val FCmax: String = ""
 )

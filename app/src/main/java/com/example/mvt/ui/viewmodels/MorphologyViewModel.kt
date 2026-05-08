@@ -45,9 +45,16 @@ class MorphologyViewModel : ViewModel() {
     fun saveMorphology(morphology: Morphology) {
         viewModelScope.launch {
             try {
-                repository.saveMorphology(uid, morphology)
-                _morphology.value = morphology
-                _uiState.value = MorphologyUiState.Saved
+                // Carga los datos actuales para preservar FCmin y FCmax
+                val current = repository.getMorphology(uid) ?: Morphology()
+
+                val toSave = morphology.copy(
+                    FCmin = current.FCmin,
+                    FCmax = current.FCmax
+                )
+                repository.saveMorphology(uid, toSave)
+                _morphology.value  = toSave
+                _uiState.value     = MorphologyUiState.Saved
             } catch (e: Exception) {
                 Log.e("MorphologyViewModel", "Error guardando", e)
                 _uiState.value = MorphologyUiState.Error("Error al guardar los datos")

@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -80,7 +81,7 @@ fun AthleteHeader(
             Box(
                 modifier = Modifier
                     .padding(end = 8.dp)
-                    .size(36.dp)
+                    .size(34.dp)
                     .clip(CircleShape)
                     .background(Color.White)
                     .clickable { showLogoutDialog = true },
@@ -96,9 +97,11 @@ fun AthleteHeader(
                     AsyncImage(
                         model = profilePhotoUrl,
                         contentDescription = "Foto de perfil",
+                        contentScale = ContentScale.Crop,
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
+                            .background(Color.Transparent)
                     )
                 }
             }
