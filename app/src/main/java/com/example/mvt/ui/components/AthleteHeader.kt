@@ -23,6 +23,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.mvt.R
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 import java.util.Calendar
 
@@ -45,7 +48,7 @@ fun AthleteHeader(
     val greetingIcon = if (isDayTime) Icons.Default.WbSunny else Icons.Default.DarkMode
 
     TopAppBar(
-        colors = TopAppBarDefaults.topAppBarColors(containerColor = PrimaryBlue),
+        colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
         navigationIcon = {
             IconButton(onClick = onMenuClick) {
                 Icon(Icons.Default.Menu, contentDescription = "Menú", tint = Color.White)
@@ -83,7 +86,7 @@ fun AthleteHeader(
                     .padding(end = 8.dp)
                     .size(34.dp)
                     .clip(CircleShape)
-                    .background(Color.White)
+                    .background(AppSurface)
                     .clickable { showLogoutDialog = true },
                 contentAlignment = Alignment.Center
             ) {
@@ -118,7 +121,7 @@ fun AthleteHeader(
             ) {
                 Surface(
                     shape = RoundedCornerShape(16.dp),
-                    color = Color(0xFF1E1E1E),
+                    color = AppSurface,
                     tonalElevation = 8.dp,
                     modifier = Modifier
                         .fillMaxWidth(0.85f)
@@ -161,7 +164,7 @@ fun AthleteHeader(
                             onClick = { showLogoutDialog = false },
                             modifier = Modifier.padding(top = 4.dp)
                         ) {
-                            Text("Cancelar", color = Color.Gray)
+                            Text("Cancelar", color = AppTextSecondary)
                         }
                     }
                 }

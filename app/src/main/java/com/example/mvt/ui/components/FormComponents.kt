@@ -19,6 +19,12 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import com.example.mvt.ui.theme.AccentRed
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSuccess
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 
 // ==========================================
@@ -37,12 +43,12 @@ fun FormLabel(
                 append(text)
                 if (required) {
                     append(" ")
-                    withStyle(SpanStyle(color = Color.Red)) { append("*") }
+                    withStyle(SpanStyle(color = AccentRed)) { append("*") }
                 }
             },
             fontSize = 14.sp,
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF555B61)
+            color = AppTextSecondary
         )
         if (info != null) {
             Spacer(modifier = Modifier.width(6.dp))
@@ -66,11 +72,11 @@ fun FormSpacer() {
 @Composable
 fun formFieldColors() = OutlinedTextFieldDefaults.colors(
     focusedBorderColor   = PrimaryBlue,
-    unfocusedBorderColor = Color(0xFFCCCCCC),
+    unfocusedBorderColor = AppBorder,
     cursorColor          = PrimaryBlue,
     focusedLabelColor    = PrimaryBlue,
-    focusedTextColor     = Color(0xFF2B2E34),
-    unfocusedTextColor   = Color(0xFF2B2E34)
+    focusedTextColor     = AppTextPrimary,
+    unfocusedTextColor   = AppTextPrimary
 )
 
 // ==========================================
@@ -78,10 +84,10 @@ fun formFieldColors() = OutlinedTextFieldDefaults.colors(
 // ==========================================
 @Composable
 fun formReadOnlyColors() = OutlinedTextFieldDefaults.colors(
-    disabledBorderColor    = Color(0xFFCCCCCC),
-    disabledTextColor      = Color(0xFF888888),
-    disabledContainerColor = Color(0xFFF5F5F5),
-    disabledLabelColor     = Color(0xFF888888)
+    disabledBorderColor    = AppBorder,
+    disabledTextColor      = AppTextSecondary,
+    disabledContainerColor = AppSurface,
+    disabledLabelColor     = AppTextSecondary
 )
 
 // ==========================================
@@ -103,7 +109,7 @@ fun FormTooltip(message: String) {
             Dialog(onDismissRequest = { show = false }) {
                 Surface(
                     shape = RoundedCornerShape(12.dp),
-                    color = Color.White,
+                    color = AppSurface,
                     border = BorderStroke(2.dp, PrimaryBlue),
                     tonalElevation = 4.dp
                 ) {
@@ -112,7 +118,7 @@ fun FormTooltip(message: String) {
                             .padding(16.dp)
                             .widthIn(min = 200.dp, max = 280.dp)
                     ) {
-                        Text(text = message, fontSize = 14.sp, color = Color(0xFF333333))
+                        Text(text = message, fontSize = 14.sp, color = AppTextPrimary)
                         Spacer(modifier = Modifier.height(12.dp))
                         TextButton(
                             onClick = { show = false },
@@ -143,7 +149,7 @@ fun FormSuccessNotification(message: String, onDismiss: () -> Unit) {
         contentAlignment = Alignment.TopCenter
     ) {
         Surface(
-            color = Color(0xFF4CAF50),
+            color = AppSuccess,
             shape = RoundedCornerShape(14.dp),
             shadowElevation = 6.dp
         ) {
@@ -180,7 +186,7 @@ fun FormErrorNotification(message: String, onDismiss: () -> Unit) {
         contentAlignment = Alignment.TopCenter
     ) {
         Surface(
-            color = Color(0xFFD32F2F),
+            color = AccentRed,
             shape = RoundedCornerShape(14.dp),
             shadowElevation = 8.dp
         ) {

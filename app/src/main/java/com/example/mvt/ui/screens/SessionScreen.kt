@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.mvt.R
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.delay
@@ -74,9 +76,9 @@ fun SessionScreen(navController: NavController) {
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            PrimaryBlue.copy(alpha = 0.8f),
-                            PrimaryBlue.copy(alpha = 0.7f),
-                            Color(0xFF0D47A1).copy(alpha = 0.7f)
+                            AppBackground.copy(alpha = 0.86f),
+                            AppSurface.copy(alpha = 0.82f),
+                            PrimaryBlue.copy(alpha = 0.72f)
                         )
                     )
                 )

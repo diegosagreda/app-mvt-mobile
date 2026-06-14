@@ -20,6 +20,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.R
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 
 @Composable
@@ -35,7 +40,7 @@ fun DrawerContent(onItemClick: (String) -> Unit) {
             .width(300.dp)
             .background(
                 brush = Brush.verticalGradient(
-                    colors = listOf(Color(0xFFF7F9FB), Color(0xFFEFF3F9))
+                    colors = listOf(AppBackground, AppSurface)
                 )
             )
             .padding(horizontal = 16.dp, vertical = 24.dp)
@@ -54,7 +59,7 @@ fun DrawerContent(onItemClick: (String) -> Unit) {
         Text(
             text = "Menú Principal",
             fontWeight = FontWeight.SemiBold,
-            color = Color(0xFF555B61),
+            color = AppTextSecondary,
             fontSize = 18.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
@@ -129,7 +134,7 @@ fun DrawerSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = AppSurfaceAlt),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         shape = RoundedCornerShape(12.dp)
     ) {
@@ -187,7 +192,7 @@ fun DrawerItem(text: String, icon: ImageVector, route: String, onItemClick: (Str
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
             .clickable { onItemClick(route) }
-            .background(Color(0xFFF5F8FB))
+            .background(AppSurface)
             .padding(vertical = 10.dp, horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -200,7 +205,7 @@ fun DrawerItem(text: String, icon: ImageVector, route: String, onItemClick: (Str
         Spacer(modifier = Modifier.width(14.dp))
         Text(
             text = text,
-            color = Color(0xFF2B2E34),
+            color = AppTextPrimary,
             fontSize = 15.sp
         )
     }

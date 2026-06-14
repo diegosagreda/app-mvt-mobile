@@ -7,6 +7,10 @@ import androidx.lifecycle.viewModelScope
 import com.example.mvt.data.firebase.AuthService
 import com.example.mvt.data.firebase.GoogleAuthService
 import com.example.mvt.domain.repositories.AuthRepository
+import com.google.firebase.FirebaseNetworkException
+import com.google.firebase.FirebaseTooManyRequestsException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.mutableStateOf
@@ -26,12 +30,30 @@ class AuthViewModel : ViewModel() {
     //  LOGIN CON CORREO
     // ===========================
     fun login(email: String, password: String) {
+        val cleanEmail = email.trim()
+        val cleanPassword = password.trim()
+
+        when {
+            cleanEmail.isEmpty() && cleanPassword.isEmpty() -> {
+                _error.value = "Ingresa tu correo electrónico y contraseña."
+                return
+            }
+            cleanEmail.isEmpty() -> {
+                _error.value = "Ingresa tu correo electrónico."
+                return
+            }
+            cleanPassword.isEmpty() -> {
+                _error.value = "Ingresa tu contraseña."
+                return
+            }
+        }
+
         viewModelScope.launch {
             try {
-                _user.value = repo.login(email, password)
+                _user.value = repo.login(cleanEmail, cleanPassword)
                 _error.value = null
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = mapAuthError(e)
             }
         }
     }
@@ -42,7 +64,7 @@ class AuthViewModel : ViewModel() {
                 _user.value = repo.register(email, password)
                 _error.value = null
             } catch (e: Exception) {
-                _error.value = e.message
+                _error.value = mapAuthError(e)
             }
         }
     }
@@ -78,5 +100,15 @@ class AuthViewModel : ViewModel() {
                 onError(it)
             }
         )
+    }
+
+    private fun mapAuthError(error: Exception): String {
+        return when (error) {
+            is FirebaseAuthInvalidUserException,
+            is FirebaseAuthInvalidCredentialsException -> "Correo o contraseña incorrectos."
+            is FirebaseNetworkException -> "No fue posible conectarse. Revisa tu internet."
+            is FirebaseTooManyRequestsException -> "Demasiados intentos. Intenta de nuevo en unos minutos."
+            else -> error.message ?: "Ocurrió un error al iniciar sesión."
+        }
     }
 }

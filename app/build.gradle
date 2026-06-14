@@ -17,6 +17,9 @@ android {
         versionCode 1
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        buildConfigField "String", "STRAVA_CLIENT_ID", "\"246034\""
+        buildConfigField "String", "STRAVA_REDIRECT_URI", "\"https://app.myvirtualtrainer.co/deportista/conexiones/strava\""
+        buildConfigField "String", "STRAVA_FUNCTIONS_BASE_URL", "\"https://us-central1-my-virtual-trainer-af778.cloudfunctions.net\""
         vectorDrawables {
             useSupportLibrary true
         }
@@ -40,6 +43,7 @@ android {
 
     buildFeatures {
         compose true
+        buildConfig true
     }
 
 

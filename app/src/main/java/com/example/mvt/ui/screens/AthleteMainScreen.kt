@@ -18,6 +18,7 @@ import com.example.mvt.ui.components.AthleteHeader
 import com.example.mvt.ui.components.drawer.DrawerContent
 import com.example.mvt.ui.screens.personaldata.MorphologyScreen
 import com.example.mvt.ui.screens.personaldata.PhysicalCapacityScreen
+import com.example.mvt.ui.screens.settings.ConnectionScreen
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.viewmodels.RealtimeViewModel
 import com.example.mvt.ui.viewmodels.UserViewModel
@@ -181,6 +182,9 @@ fun AthleteMainScreen(
                             navController = innerNavController,
                             viewModel     = physicalCapacityViewModel
                         )
+                    }
+                    composable("connection") {
+                        ConnectionScreen(navController = innerNavController)
                     }
 
                 }
