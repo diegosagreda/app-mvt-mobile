@@ -15,6 +15,8 @@ data class Routine(
     val tipo_esfuerzo: String = "",
     val tipo_medicion: String = "",
     val tipo_terreno: String = "",
+    val isStravaSynced: Boolean = false,
+    val stravaActivityId: String = "",
     val sesiones_calentamiento: List<Map<String, Any>>? = null,
     val sesiones_central: Map<String, Any>? = null,
     val sesiones_calma: List<Map<String, Any>>? = null,

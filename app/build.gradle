@@ -18,7 +18,7 @@ android {
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         buildConfigField "String", "STRAVA_CLIENT_ID", "\"246034\""
-        buildConfigField "String", "STRAVA_REDIRECT_URI", "\"https://app.myvirtualtrainer.co/deportista/conexiones/strava\""
+        buildConfigField "String", "STRAVA_REDIRECT_URI", "\"mvt://app.myvirtualtrainer.co/deportista/conexiones/strava\""
         buildConfigField "String", "STRAVA_FUNCTIONS_BASE_URL", "\"https://us-central1-my-virtual-trainer-af778.cloudfunctions.net\""
         vectorDrawables {
             useSupportLibrary true
@@ -58,6 +58,7 @@ dependencies {
     // === CORE ANDROID ===
     implementation 'androidx.core:core-ktx:1.13.1'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.0'
+    implementation 'androidx.lifecycle:lifecycle-process:2.8.0'
     implementation 'androidx.activity:activity-compose:1.9.3'
 
 
@@ -81,6 +82,7 @@ dependencies {
     implementation 'com.google.firebase:firebase-database'
     implementation 'com.google.firebase:firebase-auth'
     implementation 'com.google.firebase:firebase-firestore'
+    implementation 'com.google.firebase:firebase-messaging'
 
     // === CALENDARIO ===
     implementation "com.kizitonwose.calendar:compose:2.0.2"

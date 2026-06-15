@@ -2,6 +2,7 @@ package com.example.mvt.ui.screens
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -24,6 +25,12 @@ import com.example.mvt.ui.components.RoutineSummaryCard
 import com.example.mvt.ui.components.chart.RoutineChart
 import com.example.mvt.ui.components.header.RoutineHeader
 import com.example.mvt.ui.screens.components.RoutinePhasesSection
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,13 +43,15 @@ fun RoutineDetailScreen(
     zonas: Map<String, Any>?,    // ← parámetros correctamente definidos
     onBackClick: () -> Unit
 ) {
-    val fechaFormatted = remember(routine.fecha) {
-        routine.fecha?.toDate()?.let {
+    var routineState by remember(routine.id) { mutableStateOf(routine) }
+
+    val fechaFormatted = remember(routineState.fecha) {
+        routineState.fecha?.toDate()?.let {
             SimpleDateFormat("yyyy/MM/dd", Locale.getDefault()).format(it)
         } ?: "Sin fecha"
     }
 
-    Log.d("RoutineDetailScreen", "Rutina ID ${routine.id} - Titulo ${routine.titulo}")
+    Log.d("RoutineDetailScreen", "Rutina ID ${routineState.id} - Titulo ${routineState.titulo}")
 
     var expandedInfo by remember { mutableStateOf(true) }
     var expandedGraph by remember { mutableStateOf(false) }
@@ -52,19 +61,18 @@ fun RoutineDetailScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF7F9FC))
+            .background(AppBackground)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(scrollState)
-                .padding(horizontal = 0.dp)
         ) {
             // === CABECERA ===
             RoutineHeader(
-                titulo = routine.titulo,
+                titulo = routineState.titulo,
                 fecha = fechaFormatted,
-                tipoMedicion = routine.tipo_medicion,
+                tipoMedicion = routineState.tipo_medicion,
                 onBackClick = onBackClick
             )
 
@@ -72,10 +80,13 @@ fun RoutineDetailScreen(
 
             // === TARJETA PRINCIPAL ===
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp)
+                    .border(1.dp, AppBorder, RoundedCornerShape(16.dp)),
                 shape = RoundedCornerShape(16.dp),
                 elevation = CardDefaults.cardElevation(6.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
+                colors = CardDefaults.cardColors(containerColor = AppSurface)
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
 
@@ -85,11 +96,11 @@ fun RoutineDetailScreen(
                         onExpandChange = { expandedInfo = !expandedInfo }
                     ) {
                         RoutineInfoSection(
-                            tipoEsfuerzo = routine.tipo_esfuerzo,
-                            tipoMedicion = routine.tipo_medicion,
-                            tipoTerreno = routine.tipo_terreno,
-                            descripcion = routine.descripcion,
-                            objetivos = routine.objetivos
+                            tipoEsfuerzo = routineState.tipo_esfuerzo,
+                            tipoMedicion = routineState.tipo_medicion,
+                            tipoTerreno = routineState.tipo_terreno,
+                            descripcion = routineState.descripcion,
+                            objetivos = routineState.objetivos
                         )
                     }
 
@@ -98,7 +109,7 @@ fun RoutineDetailScreen(
                         expanded = expandedGraph,
                         onExpandChange = { expandedGraph = !expandedGraph }
                     ) {
-                        if (!routine.sesiones_calentamiento.isNullOrEmpty()) {
+                        if (!routineState.sesiones_calentamiento.isNullOrEmpty()) {
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -106,14 +117,14 @@ fun RoutineDetailScreen(
                                     .padding(horizontal = 8.dp, vertical = 12.dp)
                             ) {
                                 RoutineChart(
-                                    routine = routine,
+                                    routine = routineState,
                                     modifier = Modifier.fillMaxSize()
                                 )
                             }
                         } else {
                             Text(
                                 text = "No hay ejercicios en la fase de calentamiento.",
-                                color = Color.Gray
+                                color = AppTextSecondary
                             )
                         }
                     }
@@ -127,18 +138,18 @@ fun RoutineDetailScreen(
                         onExpandChange = { expandedPhases = !expandedPhases }
                     ) {
                         RoutinePhasesSection(
-                            calentamiento = routine.sesiones_calentamiento ?: emptyList(),
-                            central = routine.sesiones_central ?: emptyMap(),
-                            vuelta = routine.sesiones_calma ?: emptyList(),
-                            comentarios_fase_calentamiento = routine.comentarios_fase_calentamiento,
-                            comentarios_fase_central = routine.comentarios_fase_central,
-                            comentarios_fase_calma = routine.comentarios_fase_calma,
-                            recursosCalentamiento = routine.videosCalentamiento,
-                            recursosCentral = routine.videosCentral,
-                            recursosCalma = routine.videosCalma,
+                            calentamiento = routineState.sesiones_calentamiento ?: emptyList(),
+                            central = routineState.sesiones_central ?: emptyMap(),
+                            vuelta = routineState.sesiones_calma ?: emptyList(),
+                            comentarios_fase_calentamiento = routineState.comentarios_fase_calentamiento,
+                            comentarios_fase_central = routineState.comentarios_fase_central,
+                            comentarios_fase_calma = routineState.comentarios_fase_calma,
+                            recursosCalentamiento = routineState.videosCalentamiento,
+                            recursosCentral = routineState.videosCentral,
+                            recursosCalma = routineState.videosCalma,
                             ritmos = ritmos,   // ← pasa los datos
                             zonas = zonas,      // ← pasa los datos
-                            tipoMedicion = routine.tipo_medicion
+                            tipoMedicion = routineState.tipo_medicion
                         )
                     }
                 }
@@ -154,7 +165,12 @@ fun RoutineDetailScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
         ) {
-            RoutineSummaryCard(routine = routine)
+            RoutineSummaryCard(
+                routine = routineState,
+                onEstadoActualizado = { nuevoEstado ->
+                    routineState = routineState.copy(estado = nuevoEstado)
+                }
+            )
         }
 
     }
@@ -171,15 +187,16 @@ fun AccordionSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .background(AppSurfaceAlt, RoundedCornerShape(12.dp))
                 .clickable { onExpandChange() }
-                .padding(vertical = 10.dp),
+                .padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text(
                 text = title,
                 fontWeight = FontWeight.Bold,
-                color = PrimaryBlue,
+                color = AppTextPrimary,
                 fontSize = 16.sp
             )
             Icon(
@@ -190,7 +207,8 @@ fun AccordionSection(
         }
 
         if (expanded) {
-            Divider(color = Color(0xFFE0E0E0), thickness = 1.dp)
+            Spacer(modifier = Modifier.height(10.dp))
+            Divider(color = AppBorder, thickness = 1.dp)
             content()
         }
     }

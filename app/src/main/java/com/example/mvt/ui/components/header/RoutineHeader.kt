@@ -2,6 +2,7 @@ package com.example.mvt.ui.components.header
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -20,10 +21,15 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.R
-import com.example.mvt.ui.theme.PrimaryBlue
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextSecondary
 
 @Composable
 fun RoutineHeader(
@@ -34,9 +40,9 @@ fun RoutineHeader(
 ) {
     val gradient = Brush.verticalGradient(
         colors = listOf(
-            PrimaryBlue.copy(alpha = 1f),
-            PrimaryBlue.copy(alpha = 0.9f),
-            PrimaryBlue.copy(alpha = 0.6f)
+            AppBackground,
+            AppSurface,
+            AppSurfaceAlt
         ),
         startY = 0f,
         endY = 700f
@@ -77,8 +83,8 @@ fun RoutineHeader(
                     onClick = onBackClick,
                     modifier = Modifier
                         .size(46.dp)
-                        .background(Color.White.copy(alpha = 0.2f), shape = CircleShape)
-                        .border(1.dp, Color.White.copy(alpha = 0.3f), CircleShape)
+                        .background(AppSurfaceAlt, shape = CircleShape)
+                        .border(1.dp, AppBorder, CircleShape)
                 ) {
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
@@ -96,8 +102,8 @@ fun RoutineHeader(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.0f),
-                                    Color.White.copy(alpha = 0.35f),
-                                    Color.White.copy(alpha = 0.0f)
+                                    AppBorder,
+                                    Color.Transparent
                                 )
                             )
                         )
@@ -122,8 +128,8 @@ fun RoutineHeader(
                             Brush.horizontalGradient(
                                 colors = listOf(
                                     Color.White.copy(alpha = 0.0f),
-                                    Color.White.copy(alpha = 0.35f),
-                                    Color.White.copy(alpha = 0.0f)
+                                    AppBorder,
+                                    Color.Transparent
                                 )
                             )
                         )
@@ -134,7 +140,7 @@ fun RoutineHeader(
                     modifier = Modifier
                         .size(46.dp)
                         .clip(CircleShape)
-                        .background(Color.White.copy(alpha = 0.2f)),
+                        .background(AppSurfaceAlt),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
@@ -156,8 +162,12 @@ fun RoutineHeader(
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 26.sp,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2
+                    textAlign = TextAlign.Start,
+                    maxLines = 1,
+                    overflow = TextOverflow.Visible,
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .basicMarquee()
                 )
 
                 Spacer(modifier = Modifier.height(4.dp))
@@ -176,7 +186,7 @@ fun RoutineHeader(
                     )
                     Text(
                         text = fecha,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = AppTextSecondary,
                         fontSize = 15.sp,
                         textAlign = TextAlign.Center
                     )
@@ -191,7 +201,7 @@ fun RoutineHeader(
                     .height(2.dp)
                     .fillMaxWidth(0.3f)
                     .align(Alignment.CenterHorizontally)
-                    .background(Color.White.copy(alpha = 0.6f))
+                    .background(AppBorder)
             )
         }
     }

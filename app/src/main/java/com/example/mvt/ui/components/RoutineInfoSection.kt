@@ -1,6 +1,7 @@
 package com.example.mvt.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -11,6 +12,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,18 +73,20 @@ fun InfoField(label: String, value: String) {
             readOnly = true,
             singleLine = true,
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color(0xFFF5F7FA),
-                unfocusedContainerColor = Color(0xFFF5F7FA),
-                disabledContainerColor = Color(0xFFF5F7FA),
+                focusedContainerColor = AppSurfaceAlt,
+                unfocusedContainerColor = AppSurfaceAlt,
+                disabledContainerColor = AppSurfaceAlt,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent,
-                // 👇 Colores del texto
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black,
-                disabledTextColor = Color.Black
+                focusedTextColor = AppTextPrimary,
+                unfocusedTextColor = AppTextPrimary,
+                disabledTextColor = AppTextPrimary
             ),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, AppBorder, RoundedCornerShape(12.dp)),
+            shape = RoundedCornerShape(12.dp)
         )
     }
 }
@@ -90,7 +97,8 @@ fun InfoBox(title: String, text: String) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF9FAFB), RoundedCornerShape(8.dp))
+            .background(AppSurfaceAlt, RoundedCornerShape(8.dp))
+            .border(1.dp, AppBorder, RoundedCornerShape(8.dp))
             .padding(12.dp)
     ) {
         Text(
@@ -102,7 +110,7 @@ fun InfoBox(title: String, text: String) {
         Spacer(modifier = Modifier.height(6.dp))
         Text(
             text = text.ifEmpty { "Sin información disponible." },
-            color = Color.DarkGray,
+            color = AppTextSecondary,
             fontSize = 14.sp,
             textAlign = TextAlign.Justify
         )

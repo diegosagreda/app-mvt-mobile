@@ -3,6 +3,7 @@ package com.example.mvt.ui.screens.components.phases
 import android.util.Log
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,6 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.ui.screens.components.model.TrainingPhase
 import com.example.mvt.ui.screens.components.ui.PhaseExerciseItem
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,15 +56,16 @@ fun PhaseCardGeneral(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .border(1.dp, AppBorder, RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = AppSurface)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Brush.verticalGradient(listOf(Color(0xFFE3F2FD), Color.White)))
+                .background(Brush.verticalGradient(listOf(AppSurfaceAlt, AppSurface)))
                 .padding(12.dp)
         ) {
             // === Encabezado de la fase ===
@@ -71,11 +78,11 @@ fun PhaseCardGeneral(
                     Icon(phase.icono, null, tint = PrimaryBlue)
                     Spacer(Modifier.width(6.dp))
                     Text(
-                        phase.nombre,
-                        color = PrimaryBlue,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 17.sp
-                    )
+                    phase.nombre,
+                    color = AppTextPrimary,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 17.sp
+                )
                 }
 
                 Icon(
@@ -104,7 +111,7 @@ fun PhaseCardGeneral(
                         if (i < phase.ejercicios.lastIndex) {
                             Divider(
                                 thickness = 0.5.dp,
-                                color = Color.Gray.copy(alpha = 0.2f),
+                                color = AppBorder,
                                 modifier = Modifier.padding(vertical = 6.dp)
                             )
                         }
@@ -115,7 +122,7 @@ fun PhaseCardGeneral(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = phase.comentario,
-                            color = Color.DarkGray,
+                            color = AppTextSecondary,
                             fontSize = 13.sp,
                             lineHeight = 18.sp
                         )

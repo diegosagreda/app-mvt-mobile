@@ -14,18 +14,22 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.R
+import com.example.mvt.ui.screens.UnderConstructionDestination
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.AppSurfaceAlt
 import com.example.mvt.ui.theme.AppTextPrimary
 import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
+
+private fun pendingRoute(feature: String): String = UnderConstructionDestination.routeFor(feature)
 
 @Composable
 fun DrawerContent(onItemClick: (String) -> Unit) {
@@ -47,10 +51,12 @@ fun DrawerContent(onItemClick: (String) -> Unit) {
     ) {
         // Logo y encabezado
         Image(
-            painter = painterResource(id = R.drawable.logo),
+            painter = painterResource(id = R.drawable.mvt),
             contentDescription = "Logo MVT",
+            contentScale = ContentScale.Fit,
             modifier = Modifier
-                .size(90.dp)
+                .width(150.dp)
+                .height(66.dp)
                 .align(Alignment.CenterHorizontally)
         )
 
@@ -75,10 +81,10 @@ fun DrawerContent(onItemClick: (String) -> Unit) {
                 DrawerItemData("Perfil", Icons.Default.Person, "profile"),
                 DrawerItemData("Morfología", Icons.Default.Accessibility, "morphology"),
                 DrawerItemData("Capacidad Física", Icons.Default.FitnessCenter, "fitness"),
-                DrawerItemData("Rendimiento", Icons.Default.Timer, "performance"),
-                DrawerItemData("Deportivo", Icons.Default.DirectionsBike, "sports"),
-                DrawerItemData("Salud", Icons.Default.FavoriteBorder, "health"),
-                DrawerItemData("Objetivos", Icons.Default.BarChart, "goals")
+                DrawerItemData("Rendimiento", Icons.Default.Timer, pendingRoute("performance")),
+                DrawerItemData("Deportivo", Icons.Default.DirectionsBike, pendingRoute("sports")),
+                DrawerItemData("Salud", Icons.Default.FavoriteBorder, pendingRoute("health")),
+                DrawerItemData("Objetivos", Icons.Default.BarChart, pendingRoute("goals"))
             ),
             onItemClick = onItemClick
         )
@@ -88,8 +94,8 @@ fun DrawerContent(onItemClick: (String) -> Unit) {
             expanded = planesExpanded,
             onToggle = { planesExpanded = !planesExpanded },
             items = listOf(
-                DrawerItemData("Planes", Icons.Default.Map, "plans"),
-                DrawerItemData("Facturación", Icons.Default.ReceiptLong, "billing")
+                DrawerItemData("Planes", Icons.Default.Map, pendingRoute("plans")),
+                DrawerItemData("Facturación", Icons.Default.ReceiptLong, pendingRoute("billing"))
             ),
             onItemClick = onItemClick
         )
@@ -99,11 +105,11 @@ fun DrawerContent(onItemClick: (String) -> Unit) {
             expanded = entrenamientoExpanded,
             onToggle = { entrenamientoExpanded = !entrenamientoExpanded },
             items = listOf(
-                DrawerItemData("Tu Entrenador", Icons.Default.PersonPin, "trainer"),
-                DrawerItemData("Entrenadores", Icons.Default.Groups, "coaches"),
+                DrawerItemData("Tu Entrenador", Icons.Default.PersonPin, pendingRoute("trainer")),
+                DrawerItemData("Entrenadores", Icons.Default.Groups, pendingRoute("coaches")),
                 DrawerItemData("Rutinas", Icons.Default.CalendarMonth, "routines"),
-                DrawerItemData("Explorar", Icons.Default.Search, "explore"),
-                DrawerItemData("Sugerencias", Icons.Default.Lightbulb, "suggestions")
+                DrawerItemData("Explorar", Icons.Default.Search, pendingRoute("explore")),
+                DrawerItemData("Sugerencias", Icons.Default.Lightbulb, pendingRoute("suggestions"))
             ),
             onItemClick = onItemClick
         )
@@ -114,8 +120,8 @@ fun DrawerContent(onItemClick: (String) -> Unit) {
             onToggle = { configuracionExpanded = !configuracionExpanded },
             items = listOf(
                 DrawerItemData("Conexión", Icons.Default.Link, "connection"),
-                DrawerItemData("Ayuda", Icons.Default.HelpOutline, "help"),
-                DrawerItemData("Acerca de", Icons.Default.Info, "about")
+                DrawerItemData("Ayuda", Icons.Default.HelpOutline, pendingRoute("help")),
+                DrawerItemData("Acerca de", Icons.Default.Info, pendingRoute("about"))
             ),
             onItemClick = onItemClick
         )

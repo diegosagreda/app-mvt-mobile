@@ -1,13 +1,16 @@
 package com.example.mvt.ui.screens.settings
 
-import android.annotation.SuppressLint
-import android.graphics.Bitmap
+import android.content.Intent
 import android.net.Uri
 import android.text.format.DateUtils
-import android.webkit.WebResourceRequest
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -27,7 +30,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.Image
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.LinkOff
@@ -37,71 +39,88 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.viewinterop.AndroidView
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import com.example.mvt.R
 import com.example.mvt.data.firebase.models.StravaConnection
+import com.example.mvt.ui.theme.AccentRed
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppPrimarySoft
 import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.AppSurfaceAlt
 import com.example.mvt.ui.theme.AppTextPrimary
 import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
+import com.example.mvt.utils.StravaAuthRedirectBus
 import com.example.mvt.ui.viewmodels.StravaConnectionViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 private val StravaOrange = Color(0xFFFC4C02)
-private val Ink = AppTextPrimary
-private val Muted = AppTextSecondary
-private val SoftSurface = AppBackground
-private val SoftPanel = AppSurface
-private val SoftBlueBorder = AppBorder
-private val SoftBlue = AppSurfaceAlt
-private val HeroLine = AppBorder
-private val HeroPulse = Color(0xFF1570EF)
 private val GarminBlue = Color(0xFF1580C8)
+private val HeroPanel = Color(0xFF26324A)
+private val HeroPanelAlt = Color(0xFF1F2A3B)
+private val HeroText = Color(0xFFF8FAFC)
+private val HeroTextMuted = Color(0xFF93A4C2)
+private val HeroStravaGlow = Color(0xFF4A3137)
+private val HeroPulseGlow = Color(0xFF153A66)
+private val HeroGarminGlow = Color(0xFF173B57)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ConnectionScreen(
-    navController: NavController,
+    navController: androidx.navigation.NavController,
     viewModel: StravaConnectionViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val coroutineScope = rememberCoroutineScope()
+    val currentUiState by rememberUpdatedState(uiState)
+    val currentOnCancelled by rememberUpdatedState(newValue = { viewModel.onAuthCancelled() })
+    var authLeftApp by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.load()
@@ -118,172 +137,294 @@ fun ConnectionScreen(
         }
     }
 
-    Scaffold(
-        containerColor = SoftSurface,
-        topBar = {
-            TopAppBar(
-                title = { Text("Conexiones") },
-                navigationIcon = {
-                    IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ChevronLeft, contentDescription = "Volver")
+    LaunchedEffect(uiState.isAuthVisible, uiState.authUrl) {
+        if (!uiState.isAuthVisible || uiState.authUrl.isBlank()) return@LaunchedEffect
+
+        runCatching {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(uiState.authUrl)).apply {
+                addCategory(Intent.CATEGORY_BROWSABLE)
+            }
+            context.startActivity(intent)
+        }.onFailure {
+            viewModel.onAuthLaunchFailed()
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        StravaAuthRedirectBus.redirects.collect { redirect ->
+            if (redirect == null) return@collect
+
+            handleRedirect(
+                url = redirect.toString(),
+                redirectUri = currentUiState.redirectUri,
+                expectedState = currentUiState.authState,
+                onCancelled = currentOnCancelled,
+                onAuthorizationCode = viewModel::exchangeCode
+            )
+            StravaAuthRedirectBus.clear()
+        }
+    }
+
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_STOP -> {
+                    if (currentUiState.isAuthVisible) {
+                        authLeftApp = true
                     }
                 }
-            )
-        },
+
+                Lifecycle.Event.ON_RESUME -> {
+                    if (authLeftApp) {
+                        authLeftApp = false
+                        coroutineScope.launch {
+                            delay(350)
+                            if (currentUiState.isAuthVisible) {
+                                currentOnCancelled()
+                            }
+                        }
+                    }
+                }
+
+                else -> Unit
+            }
+        }
+
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    Scaffold(
+        containerColor = AppBackground,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(SoftSurface)
+                .background(AppBackground)
                 .verticalScroll(rememberScrollState())
                 .padding(padding)
-                .padding(horizontal = 20.dp, vertical = 18.dp)
                 .navigationBarsPadding(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            Spacer(modifier = Modifier.height(6.dp))
             ConnectionHero()
 
-            if (uiState.isLoading) {
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(16.dp)),
-                    color = PrimaryBlue,
-                    trackColor = AppBorder
-                )
-            }
+            Column(
+                modifier = Modifier.padding(vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                if (uiState.isLoading) {
+                    LinearProgressIndicator(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .clip(RoundedCornerShape(999.dp)),
+                        color = PrimaryBlue,
+                        trackColor = AppBorder
+                    )
+                }
 
-            ConnectionCardsSection(
-                connection = uiState.connection,
-                isEnabled = uiState.isEnabled,
-                isLoading = uiState.isLoading,
-                onToggle = viewModel::toggleSync,
-                onConnect = viewModel::openAuth
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    SectionCaption("Disponible ahora")
+                }
+                StravaConnectionCard(
+                    connection = uiState.connection,
+                    isEnabled = uiState.isEnabled,
+                    isLoading = uiState.isLoading,
+                    onToggle = viewModel::toggleSync,
+                    onConnect = viewModel::openAuth
+                )
+
+                Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    SectionCaption("En preparación")
+                }
+                GarminPreviewCard()
+            }
+        }
+    }
+}
+
+@Composable
+private fun ConnectionHero(modifier: Modifier = Modifier) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = HeroPanel),
+        modifier = Modifier
+            .then(modifier)
+            .fillMaxWidth()
+            .border(1.dp, AppBorder, RoundedCornerShape(20.dp))
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(
+                    Brush.linearGradient(
+                        colors = listOf(HeroPanel, HeroPanelAlt, HeroPanel)
+                    )
+                )
+                .padding(18.dp)
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                Text(
+                    text = "Conecta tus apps deportivas",
+                    color = HeroText,
+                    fontSize = 26.sp,
+                    lineHeight = 30.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "Actividad, rutinas y rendimiento en un solo lugar.",
+                    color = HeroTextMuted,
+                    style = MaterialTheme.typography.bodyLarge,
+                    lineHeight = 22.sp
+                )
+                HeroNodes()
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroNodes() {
+    val transferAnimation = rememberInfiniteTransition(label = "hero_transfer")
+    val transferProgress by transferAnimation.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2400, easing = LinearEasing)
+        ),
+        label = "hero_transfer_progress"
+    )
+    val mvtPulse by transferAnimation.animateFloat(
+        initialValue = 0.96f,
+        targetValue = 1.05f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1400),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "hero_mvt_pulse"
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        HeroBrandNode(
+            background = HeroStravaGlow,
+            contentColor = StravaOrange,
+            drawableRes = R.drawable.ic_strava_mark,
+            size = 60.dp,
+            iconSize = 28.dp
+        )
+        HeroNodeConnector(
+            modifier = Modifier.weight(1f),
+            progress = transferProgress,
+            sourceColor = StravaOrange,
+            reverse = false
+        )
+        HeroBrandNode(
+            background = HeroPulseGlow,
+            contentColor = PrimaryBlue,
+            drawableRes = R.drawable.mvt,
+            size = 76.dp,
+            iconSize = 52.dp,
+            modifier = Modifier.graphicsLayer {
+                scaleX = mvtPulse
+                scaleY = mvtPulse
+            }
+        )
+        HeroNodeConnector(
+            modifier = Modifier.weight(1f),
+            progress = transferProgress,
+            sourceColor = GarminBlue,
+            reverse = true
+        )
+        HeroBrandNode(
+            background = HeroGarminGlow,
+            contentColor = GarminBlue,
+            label = "GARMIN",
+            fontSize = 8.sp,
+            size = 60.dp
+        )
+    }
+}
+
+@Composable
+private fun HeroNodeConnector(
+    progress: Float,
+    sourceColor: Color,
+    reverse: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier
+            .height(56.dp)
+            .padding(horizontal = 6.dp)
+    ) {
+        val centerY = size.height / 2f
+        val lineThickness = size.height * 0.08f
+
+        drawLine(
+            brush = Brush.horizontalGradient(
+                colors = if (reverse) {
+                    listOf(
+                        PrimaryBlue.copy(alpha = 0.82f),
+                        AccentRed.copy(alpha = 0.24f),
+                        sourceColor.copy(alpha = 0.16f)
+                    )
+                } else {
+                    listOf(
+                        sourceColor.copy(alpha = 0.16f),
+                        AccentRed.copy(alpha = 0.24f),
+                        PrimaryBlue.copy(alpha = 0.82f)
+                    )
+                }
+            ),
+            start = androidx.compose.ui.geometry.Offset(0f, centerY),
+            end = androidx.compose.ui.geometry.Offset(size.width, centerY),
+            strokeWidth = lineThickness,
+            cap = StrokeCap.Round
+        )
+
+        val phases = listOf(0f, 0.22f, 0.48f)
+        phases.forEachIndexed { index, phase ->
+            val cycleProgress = (progress + phase) % 1f
+            val travelProgress = if (reverse) 1f - cycleProgress else cycleProgress
+            val particleX = size.width * travelProgress
+            val particleRadius = size.height * if (index == 0) 0.12f else 0.085f
+            val particleColor = lerp(sourceColor, PrimaryBlue, cycleProgress)
+
+            drawCircle(
+                color = particleColor.copy(alpha = if (index == 0) 0.95f else 0.72f),
+                radius = particleRadius,
+                center = androidx.compose.ui.geometry.Offset(particleX, centerY)
+            )
+            drawCircle(
+                color = particleColor.copy(alpha = 0.18f),
+                radius = particleRadius * 2.8f,
+                center = androidx.compose.ui.geometry.Offset(particleX, centerY)
             )
         }
     }
-
-    AnimatedVisibility(uiState.isAuthVisible) {
-        StravaAuthSheet(
-            authUrl = uiState.authUrl,
-            redirectUri = uiState.redirectUri,
-            onClose = viewModel::closeAuth,
-            onCancelled = viewModel::onAuthCancelled,
-            onAuthorizationCode = viewModel::exchangeCode
-        )
-    }
 }
 
 @Composable
-private fun ConnectionHero() {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SoftPanel),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, SoftBlueBorder, RoundedCornerShape(16.dp))
-    ) {
-        BoxWithConstraints(
-            modifier = Modifier.padding(28.dp)
-        ) {
-            val stacked = maxWidth < 760.dp
-
-            if (stacked) {
-                Column(verticalArrangement = Arrangement.spacedBy(24.dp)) {
-                    HeroCopy()
-                    HeroLogos(compact = true)
-                }
-            } else {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(modifier = Modifier.weight(1f)) {
-                        HeroCopy()
-                    }
-                    HeroLogos(compact = false)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun HeroCopy() {
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(
-            text = "CENTRO DE CONEXIONES",
-            color = PrimaryBlue,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.ExtraBold,
-            letterSpacing = 1.sp
-        )
-        Text(
-            text = "Integra tus actividades deportivas con My Virtual Trainer",
-            color = Ink,
-            fontSize = 28.sp,
-            lineHeight = 34.sp,
-            fontWeight = FontWeight.Bold
-        )
-        Text(
-            text = "Conecta tus aplicaciones favoritas para centralizar entrenamientos, actividades y seguimiento de rendimiento en un solo lugar.",
-            color = Muted,
-            style = MaterialTheme.typography.bodyLarge
-        )
-    }
-}
-
-@Composable
-private fun HeroLogos(compact: Boolean) {
-    Row(
-        modifier = if (compact) Modifier.fillMaxWidth() else Modifier,
-        horizontalArrangement = if (compact) Arrangement.Center else Arrangement.spacedBy(0.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        HeroBrandCircle(
-            background = Color(0xFFFFEAE0),
-            contentColor = StravaOrange,
-            drawableRes = R.drawable.ic_strava_mark
-        )
-        HeroConnector()
-        HeroBrandCircle(
-            background = AppSurfaceAlt,
-            contentColor = HeroPulse,
-            label = "∿"
-        )
-        HeroConnector()
-        HeroBrandCircle(
-            background = AppSurfaceAlt,
-            contentColor = GarminBlue,
-            label = "GARMIN",
-            fontSize = 8.sp
-        )
-    }
-}
-
-@Composable
-private fun HeroConnector() {
-    Box(
-        modifier = Modifier
-            .width(54.dp)
-            .height(2.dp)
-            .background(HeroLine)
-    )
-}
-
-@Composable
-private fun HeroBrandCircle(
+private fun HeroBrandNode(
     background: Color,
     contentColor: Color,
     label: String? = null,
     drawableRes: Int? = null,
-    fontSize: TextUnit = 22.sp
+    fontSize: TextUnit = 20.sp,
+    size: Dp = 52.dp,
+    iconSize: Dp = 24.dp,
+    modifier: Modifier = Modifier
 ) {
     Box(
-        modifier = Modifier
-            .size(56.dp)
+        modifier = modifier
+            .size(size)
             .clip(CircleShape)
             .background(background),
         contentAlignment = Alignment.Center
@@ -292,7 +433,7 @@ private fun HeroBrandCircle(
             Image(
                 painter = painterResource(id = drawableRes),
                 contentDescription = null,
-                modifier = Modifier.size(26.dp),
+                modifier = Modifier.size(iconSize),
                 colorFilter = ColorFilter.tint(contentColor)
             )
         } else if (label != null) {
@@ -307,177 +448,182 @@ private fun HeroBrandCircle(
 }
 
 @Composable
-private fun ConnectionCardsSection(
+private fun SectionCaption(text: String) {
+    Text(
+        text = text.uppercase(),
+        color = AppTextSecondary,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.ExtraBold,
+        letterSpacing = 0.8.sp
+    )
+}
+
+@Composable
+private fun StravaConnectionCard(
     connection: StravaConnection?,
     isEnabled: Boolean,
     isLoading: Boolean,
     onToggle: (Boolean) -> Unit,
     onConnect: () -> Unit
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        val stacked = maxWidth < 960.dp
-
-        if (stacked) {
-            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                StravaStatusCard(
-                    connection = connection,
-                    isEnabled = isEnabled,
-                    isLoading = isLoading,
-                    onToggle = onToggle,
-                    onConnect = onConnect
-                )
-                GarminComingSoonCard()
-            }
-        } else {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(18.dp)
-            ) {
-                StravaStatusCard(
-                    connection = connection,
-                    isEnabled = isEnabled,
-                    isLoading = isLoading,
-                    onToggle = onToggle,
-                    onConnect = onConnect,
-                    modifier = Modifier.weight(1f)
-                )
-                GarminComingSoonCard(modifier = Modifier.weight(1f))
-            }
-        }
+    val stateLabel = when {
+        connection != null -> "Conectada"
+        isLoading -> "Actualizando"
+        isEnabled -> "Disponible"
+        else -> "Desactivada"
     }
-}
 
-@Composable
-private fun StravaStatusCard(
-    connection: StravaConnection?,
-    isEnabled: Boolean,
-    isLoading: Boolean,
-    onToggle: (Boolean) -> Unit,
-    onConnect: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+    val headline = when {
+        connection != null -> "Tus actividades ya se sincronizan con MVT."
+        isEnabled -> "Asocia tus actividades a tus rutinas."
+        else -> "Activa Strava y centraliza tu actividad."
+    }
+
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SoftPanel),
-        modifier = modifier
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = AppSurface),
+        modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, SoftBlueBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, AppBorder, RoundedCornerShape(20.dp))
     ) {
         Column(
-            modifier = Modifier.padding(22.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 BrandSquare(
                     background = StravaOrange,
-                    drawableRes = R.drawable.ic_strava_mark
+                    drawableRes = R.drawable.ic_strava_mark,
+                    size = 52.dp,
+                    iconSize = 28.dp,
+                    cornerRadius = 14.dp
                 )
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = "DISPONIBLE AHORA",
-                        color = PrimaryBlue,
+                        text = "STRAVA",
+                        color = AppTextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.9.sp
+                        letterSpacing = 0.8.sp
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Strava",
-                        color = Ink,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
-                    )
+
                 }
-                FilterChip(
-                    selected = true,
-                    onClick = { },
-                    enabled = false,
-                    label = { Text("Disponible") }
+                StatusPill(
+                    text = stateLabel,
+                    accent = when {
+                        connection != null -> Color(0xFF32D296)
+                        isEnabled -> PrimaryBlue
+                        else -> AppTextSecondary
+                    }
                 )
             }
 
             Text(
-                text = "Sincroniza tus actividades de Strava para asociarlas a tus rutinas, comparar cumplimiento y entregar información más precisa a tu entrenador.",
-                color = Muted,
-                style = MaterialTheme.typography.bodyLarge
+                text = "Conexión principal",
+                color = AppTextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
+            )
+
+            Text(
+                text = headline,
+                color = AppTextSecondary,
+                style = MaterialTheme.typography.bodyLarge,
+                lineHeight = 22.sp
             )
 
             BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-                val compactMetrics = maxWidth < 620.dp
-
-                if (compactMetrics) {
+                val singleColumn = maxWidth < 340.dp
+                if (singleColumn) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        DetailInfoCard(
-                            title = "CUENTA",
+                        ConnectionStatTile(
+                            label = "Cuenta",
                             value = connection?.athleteName?.takeIf { it.isNotBlank() } ?: "Sin conectar"
                         )
-                        DetailInfoCard(
-                            title = "ÚLTIMA REVISIÓN",
-                            value = connection?.expiresAt?.let(::formatRelativeExpiry) ?: "Sin sincronización reciente"
+                        ConnectionStatTile(
+                            label = "Última sync",
+                            value = connection?.expiresAt?.let(::formatRelativeExpiry) ?: "Sin registro"
                         )
-                        DetailInfoCard(
-                            title = "PERMISOS",
-                            value = connection?.scope?.takeIf { it.isNotBlank() }?.let(::humanizeScope) ?: "Lectura de actividades"
+                        ConnectionStatTile(
+                            label = "Permisos",
+                            value = connection?.scope?.takeIf { it.isNotBlank() }?.let(::humanizeScope) ?: "Lectura"
+                        )
+                        ConnectionStatTile(
+                            label = "Estado",
+                            value = when {
+                                connection != null -> "Activa"
+                                isEnabled -> "Lista"
+                                else -> "Desactivada"
+                            }
                         )
                     }
                 } else {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        DetailInfoCard(
-                            title = "CUENTA",
-                            value = connection?.athleteName?.takeIf { it.isNotBlank() } ?: "Sin conectar",
-                            modifier = Modifier.weight(1f)
-                        )
-                        DetailInfoCard(
-                            title = "ÚLTIMA REVISIÓN",
-                            value = connection?.expiresAt?.let(::formatRelativeExpiry) ?: "Sin sincronización reciente",
-                            modifier = Modifier.weight(1f)
-                        )
-                        DetailInfoCard(
-                            title = "PERMISOS",
-                            value = connection?.scope?.takeIf { it.isNotBlank() }?.let(::humanizeScope) ?: "Lectura de actividades",
-                            modifier = Modifier.weight(1f)
-                        )
+                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ConnectionStatTile(
+                                label = "Cuenta",
+                                value = connection?.athleteName?.takeIf { it.isNotBlank() } ?: "Sin conectar",
+                                modifier = Modifier.weight(1f)
+                            )
+                            ConnectionStatTile(
+                                label = "Última sync",
+                                value = connection?.expiresAt?.let(::formatRelativeExpiry) ?: "Sin registro",
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            ConnectionStatTile(
+                                label = "Permisos",
+                                value = connection?.scope?.takeIf { it.isNotBlank() }?.let(::humanizeScope) ?: "Lectura",
+                                modifier = Modifier.weight(1f)
+                            )
+                            ConnectionStatTile(
+                                label = "Estado",
+                                value = when {
+                                    connection != null -> "Activa"
+                                    isEnabled -> "Lista"
+                                    else -> "Desactivada"
+                                },
+                                modifier = Modifier.weight(1f)
+                            )
+                        }
                     }
                 }
             }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
+            if (connection == null) {
                 Button(
-                    onClick = onConnect,
-                    enabled = connection == null && isEnabled && !isLoading,
+                    onClick = {
+                        if (!isEnabled) onToggle(true)
+                        onConnect()
+                    },
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = PrimaryBlue,
-                        disabledContainerColor = Color(0xFFA9CCF7)
+                        disabledContainerColor = AppSurfaceAlt
                     )
                 ) {
-                    Text("Conectar Strava")
+                    Text(if (isEnabled) "Conectar Strava" else "Activar y conectar")
                 }
-
-                if (connection != null) {
-                    OutlinedButton(
-                        onClick = { onToggle(false) },
-                        enabled = !isLoading
-                    ) {
-                        Icon(Icons.Default.LinkOff, contentDescription = null)
-                        Spacer(modifier = Modifier.size(8.dp))
-                        Text("Desconectar")
-                    }
-                } else {
-                    Switch(
-                        checked = isEnabled,
-                        onCheckedChange = onToggle,
-                        enabled = !isLoading
-                    )
+            } else {
+                OutlinedButton(
+                    onClick = { onToggle(false) },
+                    enabled = !isLoading,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Default.LinkOff, contentDescription = null)
+                    Spacer(modifier = Modifier.size(8.dp))
+                    Text("Desconectar")
                 }
             }
         }
@@ -485,61 +631,163 @@ private fun StravaStatusCard(
 }
 
 @Composable
-private fun GarminComingSoonCard(modifier: Modifier = Modifier) {
+private fun GarminPreviewCard() {
     Card(
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = SoftPanel),
-        modifier = modifier
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = AppSurface),
+        modifier = Modifier
             .fillMaxWidth()
-            .border(1.dp, SoftBlueBorder, RoundedCornerShape(16.dp))
+            .border(1.dp, AppBorder, RoundedCornerShape(20.dp))
     ) {
         Column(
-            modifier = Modifier.padding(22.dp),
+            modifier = Modifier.padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(14.dp)
             ) {
                 BrandSquare(
                     background = GarminBlue,
                     label = "GARMIN",
-                    fontSize = 10.sp
+                    fontSize = 8.sp,
+                    size = 52.dp,
+                    iconSize = 18.dp,
+                    cornerRadius = 14.dp
                 )
-                Column(modifier = Modifier.weight(1f)) {
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
                     Text(
-                        text = "PRÓXIMAMENTE",
-                        color = PrimaryBlue,
+                        text = "GARMIN",
+                        color = AppTextSecondary,
                         fontSize = 11.sp,
                         fontWeight = FontWeight.ExtraBold,
-                        letterSpacing = 0.9.sp
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Garmin Connect",
-                        color = Ink,
-                        fontSize = 24.sp,
-                        fontWeight = FontWeight.Bold
+                        letterSpacing = 0.8.sp
                     )
                 }
-                FilterChip(
-                    selected = true,
-                    onClick = { },
-                    enabled = false,
-                    label = { Text("En desarrollo") }
-                )
+                StatusPill(text = "Próximamente", accent = GarminBlue)
             }
 
             Text(
-                text = "Estamos preparando la integración con Garmin para sincronizar métricas de dispositivos, sesiones registradas y datos avanzados de rendimiento.",
-                color = Muted,
-                style = MaterialTheme.typography.bodyLarge
+                text = "Garmin Connect",
+                color = AppTextPrimary,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold
             )
 
-            InfoCalloutCard(
+            Text(
+                text = "Métricas de dispositivo y sesiones automáticas.",
+                color = AppTextSecondary,
+                style = MaterialTheme.typography.bodyLarge,
+                lineHeight = 22.sp
+            )
+
+            InfoStrip(
                 icon = Icons.Default.Schedule,
-                title = "Garmin llegará a este centro",
-                message = "La arquitectura queda lista para sumar nuevas conexiones sin cambiar tu flujo."
+                title = "Preparando arquitectura",
+                message = "La base ya está lista para sumar nuevas conexiones."
+            )
+        }
+    }
+}
+
+@Composable
+private fun ConnectionStatTile(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(14.dp),
+        colors = CardDefaults.cardColors(containerColor = AppSurfaceAlt),
+        modifier = modifier
+            .fillMaxWidth()
+            .border(1.dp, AppBorder, RoundedCornerShape(14.dp))
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Text(
+                text = label.uppercase(),
+                color = AppTextSecondary,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.ExtraBold,
+                letterSpacing = 0.7.sp
+            )
+            Text(
+                text = value,
+                color = AppTextPrimary,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                lineHeight = 20.sp
+            )
+        }
+    }
+}
+
+@Composable
+private fun StatusPill(
+    text: String,
+    accent: Color
+) {
+    Surface(
+        color = accent.copy(alpha = 0.12f),
+        shape = RoundedCornerShape(999.dp),
+        border = androidx.compose.foundation.BorderStroke(1.dp, accent.copy(alpha = 0.35f))
+    ) {
+        Text(
+            text = text,
+            color = if (accent == AppTextSecondary) AppTextPrimary else accent,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp)
+        )
+    }
+}
+
+@Composable
+private fun InfoStrip(
+    icon: ImageVector,
+    title: String,
+    message: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(AppSurfaceAlt)
+            .border(1.dp, AppBorder, RoundedCornerShape(14.dp))
+            .padding(14.dp),
+        verticalAlignment = Alignment.Top,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            color = AppPrimarySoft,
+            shape = RoundedCornerShape(10.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = PrimaryBlue,
+                modifier = Modifier.padding(10.dp)
+            )
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(
+                text = title,
+                color = AppTextPrimary,
+                fontWeight = FontWeight.Bold,
+                fontSize = 15.sp
+            )
+            Text(
+                text = message,
+                color = AppTextSecondary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp
             )
         }
     }
@@ -550,12 +798,15 @@ private fun BrandSquare(
     background: Color,
     label: String? = null,
     drawableRes: Int? = null,
-    fontSize: TextUnit = 22.sp
+    fontSize: TextUnit = 22.sp,
+    size: Dp = 46.dp,
+    iconSize: Dp = 22.dp,
+    cornerRadius: Dp = 12.dp
 ) {
     Box(
         modifier = Modifier
-            .size(46.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .size(size)
+            .clip(RoundedCornerShape(cornerRadius))
             .background(background),
         contentAlignment = Alignment.Center
     ) {
@@ -563,7 +814,7 @@ private fun BrandSquare(
             Image(
                 painter = painterResource(id = drawableRes),
                 contentDescription = null,
-                modifier = Modifier.size(22.dp)
+                modifier = Modifier.size(iconSize)
             )
         } else if (label != null) {
             Text(
@@ -576,194 +827,20 @@ private fun BrandSquare(
     }
 }
 
-@Composable
-private fun DetailInfoCard(
-    title: String,
-    value: String,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = AppSurfaceAlt),
-        modifier = modifier.border(1.dp, AppBorder, RoundedCornerShape(10.dp))
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = title,
-                color = Muted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.ExtraBold,
-                letterSpacing = 0.6.sp
-            )
-            Text(
-                text = value,
-                color = Ink,
-                fontWeight = FontWeight.SemiBold,
-                fontSize = 15.sp
-            )
-        }
-    }
-}
-
-@Composable
-private fun InfoCalloutCard(
-    icon: ImageVector,
-    title: String,
-    message: String
-) {
-    Card(
-        shape = RoundedCornerShape(10.dp),
-        colors = CardDefaults.cardColors(containerColor = AppSurfaceAlt),
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, AppBorder, RoundedCornerShape(10.dp))
-    ) {
-        Row(
-            modifier = Modifier.padding(14.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.Top
-        ) {
-            Surface(
-                color = SoftBlue,
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = PrimaryBlue,
-                    modifier = Modifier.padding(10.dp)
-                )
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = title,
-                    color = Ink,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = message,
-                    color = Muted,
-                    style = MaterialTheme.typography.bodyLarge
-                )
-            }
-        }
-    }
-}
-
 private fun humanizeScope(scope: String): String {
     return if (scope.contains("activity", ignoreCase = true)) {
-        "Lectura de actividades"
+        "Lectura"
     } else {
         scope
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun StravaAuthSheet(
-    authUrl: String,
-    redirectUri: String,
-    onClose: () -> Unit,
-    onCancelled: () -> Unit,
-    onAuthorizationCode: (String, String?) -> Unit
-) {
-    ModalBottomSheet(
-        onDismissRequest = onCancelled,
-        modifier = Modifier.fillMaxSize(),
-        dragHandle = null
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(AppBackground)
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = "Autorizar Strava",
-                    color = Ink,
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 18.sp,
-                    modifier = Modifier.weight(1f)
-                )
-                OutlinedButton(onClick = onClose) {
-                    Text("Cerrar")
-                }
-            }
-            StravaAuthWebView(
-                authUrl = authUrl,
-                redirectUri = redirectUri,
-                onCancelled = onCancelled,
-                onAuthorizationCode = onAuthorizationCode
-            )
-        }
-    }
-}
-
-@SuppressLint("SetJavaScriptEnabled")
-@Composable
-private fun StravaAuthWebView(
-    authUrl: String,
-    redirectUri: String,
-    onCancelled: () -> Unit,
-    onAuthorizationCode: (String, String?) -> Unit
-) {
-    val context = LocalContext.current
-    val webView = remember {
-        WebView(context).apply {
-            settings.javaScriptEnabled = true
-            settings.domStorageEnabled = true
-        }
-    }
-
-    DisposableEffect(Unit) {
-        onDispose {
-            webView.stopLoading()
-            webView.destroy()
-        }
-    }
-
-    AndroidView(
-        factory = {
-            webView.apply {
-                webViewClient = object : WebViewClient() {
-                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                        super.onPageStarted(view, url, favicon)
-                        handleRedirect(url, redirectUri, onCancelled, onAuthorizationCode)
-                    }
-
-                    override fun shouldOverrideUrlLoading(
-                        view: WebView?,
-                        request: WebResourceRequest?
-                    ): Boolean {
-                        return handleRedirect(
-                            request?.url?.toString(),
-                            redirectUri,
-                            onCancelled,
-                            onAuthorizationCode
-                        )
-                    }
-                }
-                loadUrl(authUrl)
-            }
-        },
-        modifier = Modifier.fillMaxSize()
-    )
-}
-
 private fun handleRedirect(
     url: String?,
     redirectUri: String,
+    expectedState: String,
     onCancelled: () -> Unit,
-    onAuthorizationCode: (String, String?) -> Unit
+    onAuthorizationCode: (String, String?, String?) -> Unit
 ): Boolean {
     if (url.isNullOrBlank() || !url.startsWith(redirectUri)) return false
 
@@ -776,8 +853,14 @@ private fun handleRedirect(
 
     val code = uri.getQueryParameter("code")
     val scope = uri.getQueryParameter("scope")
+    val state = uri.getQueryParameter("state")
+    if (expectedState.isNotBlank() && state != expectedState) {
+        onCancelled()
+        return true
+    }
+
     if (!code.isNullOrBlank()) {
-        onAuthorizationCode(code, scope)
+        onAuthorizationCode(code, scope, state)
         return true
     }
 

@@ -1,11 +1,18 @@
 package com.example.mvt.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -16,14 +23,21 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.mvt.R
 import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSuccess
 import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
@@ -38,7 +52,9 @@ fun AthleteHeader(
     onMessageClick: () -> Unit,
     onNotificationClick: () -> Unit,
     onLogoutClick: () -> Unit,
-    profilePhotoUrl: String? = null
+    profilePhotoUrl: String? = null,
+    isStravaConnected: Boolean = false,
+    unreadMessagesCount: Int = 0
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
 
@@ -74,11 +90,15 @@ fun AthleteHeader(
             }
         },
         actions = {
-            IconButton(onClick = onMessageClick) {
-                Icon(Icons.Default.Email, contentDescription = "Mensajes", tint = Color.White)
-            }
+            MessageActionButton(
+                unreadCount = unreadMessagesCount,
+                onClick = onMessageClick
+            )
             IconButton(onClick = onNotificationClick) {
                 Icon(Icons.Default.Notifications, contentDescription = "Notificaciones", tint = Color.White)
+            }
+            if (isStravaConnected) {
+                StravaSyncBadge()
             }
 
             Box(
@@ -169,6 +189,153 @@ fun AthleteHeader(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun MessageActionButton(
+    unreadCount: Int,
+    onClick: () -> Unit
+) {
+    val pulse = rememberInfiniteTransition(label = "chat_badge")
+    val pulseScale by pulse.animateFloat(
+        initialValue = 0.92f,
+        targetValue = 1.18f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "chat_badge_scale"
+    )
+    val pulseAlpha by pulse.animateFloat(
+        initialValue = 0.20f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1600, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "chat_badge_alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .padding(end = 2.dp)
+            .size(44.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        IconButton(onClick = onClick) {
+            Icon(Icons.Default.Email, contentDescription = "Mensajes", tint = Color.White)
+        }
+
+        if (unreadCount > 0) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 5.dp, end = 4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
+                        .clip(RoundedCornerShape(9.dp))
+                        .background(Color(0xFFFF8A6B).copy(alpha = pulseAlpha))
+                )
+                Surface(
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 18.dp, minHeight = 18.dp),
+                    shape = RoundedCornerShape(9.dp),
+                    color = Color(0xFFFC4C02),
+                    contentColor = Color.White,
+                    shadowElevation = 0.dp
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .border(1.dp, AppBackground, RoundedCornerShape(9.dp))
+                            .padding(horizontal = 4.dp, vertical = 1.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (unreadCount > 99) "99+" else unreadCount.toString(),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StravaSyncBadge() {
+    val syncPulse = rememberInfiniteTransition(label = "strava_sync")
+    val pulseScale by syncPulse.animateFloat(
+        initialValue = 0.92f,
+        targetValue = 1.22f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "strava_sync_scale"
+    )
+    val pulseAlpha by syncPulse.animateFloat(
+        initialValue = 0.22f,
+        targetValue = 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "strava_sync_alpha"
+    )
+
+    Box(
+        modifier = Modifier
+            .padding(end = 10.dp)
+            .size(width = 28.dp, height = 24.dp)
+            .clip(RoundedCornerShape(9.dp))
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color(0xFFFC6A2A), Color(0xFFFC4C02))
+                )
+            )
+            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(9.dp))
+            .semantics { contentDescription = "Strava conectado y sincronizado" },
+        contentAlignment = Alignment.Center
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_strava_mark),
+            contentDescription = null,
+            modifier = Modifier.size(12.dp),
+            colorFilter = ColorFilter.tint(Color.White)
+        )
+
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .padding(end = 2.dp, bottom = 2.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .graphicsLayer {
+                        scaleX = pulseScale
+                        scaleY = pulseScale
+                    }
+                    .clip(CircleShape)
+                    .background(AppSuccess.copy(alpha = pulseAlpha))
+            )
+            Box(
+                modifier = Modifier
+                    .size(5.dp)
+                    .clip(CircleShape)
+                    .background(AppSuccess)
+                    .border(1.dp, AppBorder, CircleShape)
+            )
         }
     }
 }

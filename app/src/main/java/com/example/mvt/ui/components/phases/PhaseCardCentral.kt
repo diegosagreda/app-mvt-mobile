@@ -3,6 +3,7 @@ package com.example.mvt.ui.screens.components.phases
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -21,6 +22,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.ui.screens.components.model.TrainingPhase
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -38,14 +44,15 @@ fun PhaseCardCentral(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .padding(vertical = 6.dp)
+            .border(1.dp, AppBorder, RoundedCornerShape(14.dp)),
         shape = RoundedCornerShape(14.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = AppSurface)
     ) {
         Column(
             modifier = Modifier
-                .background(Brush.verticalGradient(listOf(Color(0xFFE3F2FD), Color.White)))
+                .background(Brush.verticalGradient(listOf(AppSurfaceAlt, AppSurface)))
                 .padding(12.dp)
         ) {
             // === Encabezado ===
@@ -59,7 +66,7 @@ fun PhaseCardCentral(
                     Spacer(Modifier.width(6.dp))
                     Text(
                         phase.nombre,
-                        color = PrimaryBlue,
+                        color = AppTextPrimary,
                         fontWeight = FontWeight.Bold,
                         fontSize = 17.sp
                     )
@@ -103,14 +110,15 @@ fun PhaseCardCentral(
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     modifier = Modifier
-                                        .background(PrimaryBlue, RoundedCornerShape(8.dp))
+                                        .background(AppSurfaceAlt, RoundedCornerShape(8.dp))
+                                        .border(1.dp, AppBorder, RoundedCornerShape(8.dp))
                                         .padding(horizontal = 10.dp, vertical = 4.dp)
                                 ) {
-                                    Icon(Icons.Default.Repeat, null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.Repeat, null, tint = PrimaryBlue, modifier = Modifier.size(16.dp))
                                     Spacer(Modifier.width(6.dp))
                                     Text(
                                         text = "Serie ${i + 1}",
-                                        color = Color.White,
+                                        color = AppTextPrimary,
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp
                                     )
@@ -137,12 +145,13 @@ fun PhaseCardCentral(
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Box(
                                         modifier = Modifier
-                                            .background(PrimaryBlue, RoundedCornerShape(8.dp))
+                                            .background(AppSurfaceAlt, RoundedCornerShape(8.dp))
+                                            .border(1.dp, AppBorder, RoundedCornerShape(8.dp))
                                             .padding(horizontal = 10.dp, vertical = 4.dp)
                                     ) {
                                         Text(
                                             text = "×${serie["repeticiones"] ?: 1}",
-                                            color = Color.White,
+                                            color = AppTextPrimary,
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 13.sp
                                         )
@@ -234,7 +243,7 @@ fun PhaseCardCentral(
                                                         }
 
                                                         Spacer(Modifier.width(8.dp))
-                                                        Text(tipo, fontWeight = FontWeight.Bold, color = PrimaryBlue, fontSize = 14.sp)
+                                                        Text(tipo, fontWeight = FontWeight.Bold, color = AppTextPrimary, fontSize = 14.sp)
                                                     }
 
                                                     Spacer(Modifier.height(4.dp))
@@ -272,7 +281,7 @@ fun PhaseCardCentral(
                                                             columnas.forEach { (label, value) ->
                                                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                                                     Text(label, color = PrimaryBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-                                                                    Text(value.ifEmpty { "-" }, color = Color.Black, fontSize = 12.sp)
+                                                                    Text(value.ifEmpty { "-" }, color = AppTextPrimary, fontSize = 12.sp)
                                                                 }
                                                             }
                                                         }
@@ -281,7 +290,7 @@ fun PhaseCardCentral(
 
                                                 // === Marca en esquina superior derecha ===
                                                 if (marca == "INICIO" || marca == "FINAL") {
-                                                    val color = if (marca == "INICIO") Color(0xFFC8E6C9) else Color(0xFFFFCDD2)
+                                                    val color = if (marca == "INICIO") Color(0xFF24533B) else Color(0xFF5B2941)
                                                     Box(
                                                         modifier = Modifier
                                                             .align(Alignment.TopEnd)
@@ -290,7 +299,7 @@ fun PhaseCardCentral(
                                                     ) {
                                                         Text(
                                                             text = marca,
-                                                            color = Color.Black,
+                                                            color = Color.White,
                                                             fontSize = 11.sp,
                                                             fontWeight = FontWeight.SemiBold
                                                         )
@@ -301,7 +310,7 @@ fun PhaseCardCentral(
                                             if (index < sesiones.lastIndex)
                                                 Divider(
                                                     thickness = 0.5.dp,
-                                                    color = Color.Gray.copy(alpha = 0.2f),
+                                                    color = AppBorder,
                                                     modifier = Modifier.padding(vertical = 6.dp)
                                                 )
                                         }

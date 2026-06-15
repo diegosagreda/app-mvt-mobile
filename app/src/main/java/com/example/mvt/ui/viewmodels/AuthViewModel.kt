@@ -26,6 +26,9 @@ class AuthViewModel : ViewModel() {
     private val _error = mutableStateOf<String?>(null)
     val error: State<String?> = _error
 
+    private val _isLoading = mutableStateOf(false)
+    val isLoading: State<Boolean> = _isLoading
+
     // ===========================
     //  LOGIN CON CORREO
     // ===========================
@@ -35,25 +38,31 @@ class AuthViewModel : ViewModel() {
 
         when {
             cleanEmail.isEmpty() && cleanPassword.isEmpty() -> {
+                _isLoading.value = false
                 _error.value = "Ingresa tu correo electrónico y contraseña."
                 return
             }
             cleanEmail.isEmpty() -> {
+                _isLoading.value = false
                 _error.value = "Ingresa tu correo electrónico."
                 return
             }
             cleanPassword.isEmpty() -> {
+                _isLoading.value = false
                 _error.value = "Ingresa tu contraseña."
                 return
             }
         }
 
+        _isLoading.value = true
         viewModelScope.launch {
             try {
                 _user.value = repo.login(cleanEmail, cleanPassword)
                 _error.value = null
             } catch (e: Exception) {
                 _error.value = mapAuthError(e)
+            } finally {
+                _isLoading.value = false
             }
         }
     }

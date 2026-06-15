@@ -195,7 +195,7 @@ fun RoutineChart(
                 description.isEnabled = false
                 setTouchEnabled(true)
                 axisRight.isEnabled = false
-                setBackgroundColor(Color.parseColor("#F7F9FC"))
+                setBackgroundColor(Color.parseColor("#283243"))
                 setViewPortOffsets(80f, 80f, 60f, 60f)
 
                 val data = LineData()
@@ -205,7 +205,7 @@ fun RoutineChart(
                 // === EJE X ===
                 xAxis.apply {
                     position = XAxis.XAxisPosition.BOTTOM
-                    textColor = Color.DKGRAY
+                    textColor = Color.parseColor("#A2A5B9")
                     textSize = 12f
                     setDrawGridLines(false)
                     granularity = 0.5f
@@ -227,9 +227,10 @@ fun RoutineChart(
 
                 // === EJE Y ===
                 axisLeft.apply {
-                    textColor = Color.DKGRAY
+                    textColor = Color.parseColor("#A2A5B9")
                     textSize = 12f
                     setDrawGridLines(true)
+                    gridColor = Color.parseColor("#35435A")
                     axisMinimum = 0f
                     axisMaximum = 10f
                     granularity = 1f
@@ -258,7 +259,7 @@ fun RoutineChart(
                     override fun onNothingSelected() {}
                 })
 
-                legend.textColor = Color.DKGRAY
+                legend.textColor = Color.parseColor("#A2A5B9")
                 legend.textSize = 13f
                 legend.isWordWrapEnabled = true
 

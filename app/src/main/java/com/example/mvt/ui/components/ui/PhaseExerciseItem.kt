@@ -13,6 +13,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.ui.screens.components.model.PhaseExercise
+import com.example.mvt.ui.theme.AppTextPrimary
 import com.example.mvt.ui.theme.PrimaryBlue
 
 @Composable
@@ -101,7 +102,7 @@ fun PhaseExerciseItem(
 
             Text(
                 text = ejercicio.tipo,
-                color = PrimaryBlue,
+                color = AppTextPrimary,
                 fontWeight = FontWeight.Bold,
                 fontSize = 15.sp
             )
@@ -168,6 +169,6 @@ fun PhaseExerciseItem(
 fun PhaseInfoTag(label: String, value: String) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, color = PrimaryBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-        Text(value.ifEmpty { "-" }, color = Color.Black, fontSize = 12.sp)
+        Text(value.ifEmpty { "-" }, color = AppTextPrimary, fontSize = 12.sp)
     }
 }

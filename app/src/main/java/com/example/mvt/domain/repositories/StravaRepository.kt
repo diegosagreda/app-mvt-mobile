@@ -12,10 +12,12 @@ class StravaRepository {
 
     suspend fun setSyncEnabled(enabled: Boolean) = service.setSyncEnabled(enabled)
 
+    suspend fun disconnect() = service.disconnect()
+
     suspend fun exchangeToken(code: String, scope: String?): StravaConnection =
         service.exchangeToken(code, scope)
 
-    fun buildAuthorizationUrl(): String = service.buildAuthorizationUrl()
+    fun buildAuthorizationUrl(state: String): String = service.buildAuthorizationUrl(state)
 
     fun getRedirectUri(): String = service.getRedirectUri()
 }

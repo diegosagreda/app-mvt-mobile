@@ -5,21 +5,30 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import androidx.navigation.NavType
 import androidx.navigation.compose.*
+import androidx.navigation.navArgument
+import com.example.mvt.R
 import com.example.mvt.data.firebase.models.Routine
+import com.example.mvt.domain.repositories.StravaRepository
 import com.example.mvt.ui.components.AthleteHeader
 import com.example.mvt.ui.components.drawer.DrawerContent
 import com.example.mvt.ui.screens.personaldata.MorphologyScreen
 import com.example.mvt.ui.screens.personaldata.PhysicalCapacityScreen
 import com.example.mvt.ui.screens.settings.ConnectionScreen
+import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.PrimaryBlue
+import com.example.mvt.utils.StravaAuthRedirectBus
 import com.example.mvt.viewmodels.RealtimeViewModel
 import com.example.mvt.ui.viewmodels.UserViewModel
 import com.example.mvt.ui.screens.personaldata.ProfileScreen
@@ -34,11 +43,16 @@ import kotlinx.coroutines.launch
 @Composable
 fun AthleteMainScreen(
     navController: NavController,
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    onOpenChat: () -> Unit = {},
+    unreadMessagesCount: Int = 0
 ) {
     val drawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val pendingStravaRedirect by StravaAuthRedirectBus.redirects.collectAsState()
+    val innerStartDestination = if (pendingStravaRedirect != null) "connection" else "routines"
     val innerNavController = rememberNavController()
+    val stravaRepository = remember { StravaRepository() }
 
     val realtimeViewModel: RealtimeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val morphologyViewModel: MorphologyViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -53,10 +67,28 @@ fun AthleteMainScreen(
     }
 
     val saludo = remember { com.example.mvt.utils.TimeUtils.getGreeting() }
+    val innerBackStackEntry by innerNavController.currentBackStackEntryAsState()
+    val currentInnerRoute = innerBackStackEntry?.destination?.route
+    var isStravaConnected by remember { mutableStateOf(false) }
+
+    LaunchedEffect(currentInnerRoute) {
+        isStravaConnected = runCatching {
+            stravaRepository.getConnectionSnapshot().connection != null
+        }.getOrDefault(false)
+    }
+
+    LaunchedEffect(pendingStravaRedirect) {
+        if (pendingStravaRedirect != null && innerNavController.currentDestination?.route != "connection") {
+            innerNavController.navigate("connection") {
+                launchSingleTop = true
+            }
+        }
+    }
 
     // Loader inicial
-    var showLoader by remember { mutableStateOf(true) }
+    var showLoader by remember(pendingStravaRedirect) { mutableStateOf(pendingStravaRedirect == null) }
     LaunchedEffect(Unit) {
+        if (pendingStravaRedirect != null) return@LaunchedEffect
         delay(2000)
         showLoader = false
     }
@@ -71,13 +103,13 @@ fun AthleteMainScreen(
         }
     ) {
         Scaffold(
-            modifier = Modifier.background(Color.White),
+            modifier = Modifier.background(AppBackground),
             topBar = {
                 AthleteHeader(
                     saludo = saludo,
                     userName = user?.nombres ?: "Atleta",
                     onMenuClick = { scope.launch { drawerState.open() } },
-                    onMessageClick = { },
+                    onMessageClick = onOpenChat,
                     onNotificationClick = { },
                     onLogoutClick = {
                         FirebaseAuth.getInstance().signOut()
@@ -85,19 +117,21 @@ fun AthleteMainScreen(
                             popUpTo(0) { inclusive = true }
                         }
                     },
-                    profilePhotoUrl = user?.foto_url
+                    profilePhotoUrl = user?.foto_url,
+                    isStravaConnected = isStravaConnected,
+                    unreadMessagesCount = unreadMessagesCount
                 )
             }
         ) { padding ->
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.White)
+                    .background(AppBackground)
                     .padding(padding)
             ) {
                 NavHost(
                     navController = innerNavController,
-                    startDestination = "routines",
+                    startDestination = innerStartDestination,
                     modifier = Modifier.fillMaxSize()
                 ) {
                     composable("routines") {
@@ -186,6 +220,25 @@ fun AthleteMainScreen(
                     composable("connection") {
                         ConnectionScreen(navController = innerNavController)
                     }
+                    composable(
+                        route = UnderConstructionDestination.routePattern,
+                        arguments = listOf(
+                            navArgument(UnderConstructionDestination.featureArg) {
+                                type = NavType.StringType
+                            }
+                        )
+                    ) { backStackEntry ->
+                        UnderConstructionScreen(
+                            featureId = backStackEntry.arguments?.getString(
+                                UnderConstructionDestination.featureArg
+                            ),
+                            onGoToRoutines = {
+                                innerNavController.navigate("routines") {
+                                    launchSingleTop = true
+                                }
+                            }
+                        )
+                    }
 
                 }
 
@@ -203,9 +256,23 @@ private fun MissingRoutineScreen() {
 @Composable
 private fun LoaderOverlay() {
     Box(
-        modifier = Modifier.fillMaxSize().background(Color.White.copy(alpha = 0.9f)),
+        modifier = Modifier.fillMaxSize().background(AppBackground.copy(alpha = 0.88f)),
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(color = PrimaryBlue, strokeWidth = 6.dp, modifier = Modifier.size(70.dp))
+        Box(contentAlignment = Alignment.Center) {
+            CircularProgressIndicator(
+                color = PrimaryBlue,
+                strokeWidth = 6.dp,
+                modifier = Modifier.size(110.dp)
+            )
+            Image(
+                painter = painterResource(id = R.drawable.mvt),
+                contentDescription = "MVT",
+                contentScale = ContentScale.Fit,
+                modifier = Modifier
+                    .width(63.dp)
+                    .height(27.dp)
+            )
+        }
     }
 }

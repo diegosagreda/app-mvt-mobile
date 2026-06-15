@@ -26,22 +26,41 @@ import com.example.mvt.ui.components.summary.CalentamientoSummaryItem
 import com.example.mvt.ui.components.summary.CentralSummaryItem
 import com.example.mvt.ui.components.summary.RoutineStatusSelector
 import com.example.mvt.ui.components.summary.VueltaCalmaSummaryItem
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun RoutineSummaryCard(
     routine: Routine,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onEstadoActualizado: (String) -> Unit = {}
 ) {
     var expanded by remember { mutableStateOf(false) }
 
-    // =========================
-    // ESTADOS DEL TOTAL
-    // =========================
-    var totalCalentamiento by remember { mutableStateOf(0.0) }
-    var totalCentral by remember { mutableStateOf(0.0) }
-    var totalVuelta by remember { mutableStateOf(0.0) }
+    val totalCalentamiento = remember(routine.sesiones_calentamiento, routine.tipo_medicion) {
+        calculatePhaseTotal(
+            sesiones = routine.sesiones_calentamiento,
+            tipoMedicion = routine.tipo_medicion
+        )
+    }
+    val totalCentral = remember(routine.sesiones_central, routine.tipo_medicion) {
+        calculateCentralTotal(
+            sesionesCentral = routine.sesiones_central,
+            tipoMedicion = routine.tipo_medicion
+        )
+    }
+    val totalVuelta = remember(routine.sesiones_calma, routine.tipo_medicion) {
+        calculatePhaseTotal(
+            sesiones = routine.sesiones_calma,
+            tipoMedicion = routine.tipo_medicion
+        )
+    }
 
     val totalGeneral = totalCalentamiento + totalCentral + totalVuelta
 
@@ -62,9 +81,9 @@ fun RoutineSummaryCard(
     // === GRADIENTE ===
     val gradient = Brush.verticalGradient(
         colors = listOf(
-            PrimaryBlue.copy(alpha = 1f),
-            PrimaryBlue.copy(alpha = 1f),
-            PrimaryBlue.copy(alpha = 1f)
+            AppSurface,
+            AppSurfaceAlt,
+            AppBackground
         ),
         startY = 0f,
         endY = 700f
@@ -83,6 +102,7 @@ fun RoutineSummaryCard(
         Column(
             modifier = Modifier
                 .background(brush = gradient)
+                .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
@@ -91,7 +111,7 @@ fun RoutineSummaryCard(
                 modifier = Modifier
                     .width(50.dp)
                     .height(4.dp)
-                    .background(Color.White.copy(alpha = 0.6f), RoundedCornerShape(50))
+                    .background(AppTextSecondary.copy(alpha = 0.7f), RoundedCornerShape(50))
             )
 
             Spacer(modifier = Modifier.height(10.dp))
@@ -107,7 +127,7 @@ fun RoutineSummaryCard(
                 Column {
                     Text(
                         text = "Total Rutina",
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = AppTextSecondary,
                         fontSize = 15.sp,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -115,7 +135,7 @@ fun RoutineSummaryCard(
                         text = formattedTotal,
                         fontWeight = FontWeight.Bold,
                         fontSize = 18.sp,
-                        color = Color.White
+                        color = AppTextPrimary
                     )
                 }
 
@@ -127,7 +147,7 @@ fun RoutineSummaryCard(
                     "Parcial"       -> Color(0xFFFFCA99)
                     "No_realizada"  -> Color(0xFFFF6961)
                     "Pendiente"     -> Color(0xFFE5DDE6)
-                    else            -> Color.White.copy(0.4f)
+                    else            -> AppTextSecondary.copy(alpha = 0.4f)
                 }
 
                 // Tonos futuristas (glow)
@@ -173,7 +193,7 @@ fun RoutineSummaryCard(
                         else
                             Icons.Default.KeyboardArrowUp,
                         contentDescription = null,
-                        tint = Color.White.copy(alpha = 0.90f),
+                        tint = AppTextPrimary,
                         modifier = Modifier
                             .size(26.dp)
                             .padding(start = 6.dp)
@@ -197,7 +217,7 @@ fun RoutineSummaryCard(
                         .padding(top = 16.dp)
                 ) {
                     Divider(
-                        color = Color.White.copy(alpha = 0.25f),
+                        color = AppBorder,
                         thickness = 1.dp
                     )
 
@@ -208,31 +228,28 @@ fun RoutineSummaryCard(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         CalentamientoSummaryItem(
-                            sesiones = routine.sesiones_calentamiento,
+                            total = totalCalentamiento,
                             tipoMedicion = routine.tipo_medicion,
-                            modifier = Modifier.weight(1f),
-                            onTotalChange = { totalCalentamiento = it }
+                            modifier = Modifier.weight(1f)
                         )
 
                         CentralSummaryItem(
-                            sesionesCentral = routine.sesiones_central,
+                            total = totalCentral,
                             tipoMedicion = routine.tipo_medicion,
-                            modifier = Modifier.weight(1f),
-                            onTotalChange = { totalCentral = it }
+                            modifier = Modifier.weight(1f)
                         )
 
                         VueltaCalmaSummaryItem(
-                            sesiones = routine.sesiones_calma,
+                            total = totalVuelta,
                             tipoMedicion = routine.tipo_medicion,
-                            modifier = Modifier.weight(1f),
-                            onTotalChange = { totalVuelta = it }
+                            modifier = Modifier.weight(1f)
                         )
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
                     Divider(
-                        color = Color.White.copy(alpha = 0.25f),
+                        color = AppBorder,
                         thickness = 1.dp
                     )
 
@@ -245,7 +262,7 @@ fun RoutineSummaryCard(
                             .fillMaxWidth()
                             .padding(top = 16.dp),
                         onEstadoActualizado = { nuevoEstado ->
-                            routine.estado = nuevoEstado   // ← sincroniza UI automáticamente
+                            onEstadoActualizado(nuevoEstado)
                         }
                     )
 
@@ -256,7 +273,7 @@ fun RoutineSummaryCard(
                             .height(2.dp)
                             .fillMaxWidth(0.25f)
                             .align(Alignment.CenterHorizontally)
-                            .background(Color.White.copy(alpha = 0.5f))
+                            .background(AppTextSecondary.copy(alpha = 0.6f))
                     )
                 }
             }
@@ -298,5 +315,91 @@ fun SummaryBaseItem(
 
         Text(label, fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
         Text(value, fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Color.White)
+    }
+}
+
+private fun calculatePhaseTotal(
+    sesiones: List<Map<String, Any>>?,
+    tipoMedicion: String
+): Double {
+    val tipoExcluido = listOf("Flexibilidad", "Movilidad Articular", "Fortalecimiento")
+
+    if (sesiones.isNullOrEmpty()) return 0.0
+
+    return if (tipoMedicion.lowercase() == "tiempo") {
+        sesiones.sumOf {
+            val min = (it["duracion_min"] as? Number)?.toDouble() ?: 0.0
+            val seg = (it["duracion_seg"] as? Number)?.toDouble() ?: 0.0
+            min + seg / 60.0
+        }
+    } else {
+        sesiones.sumOf {
+            val tipo = (it["tipo"] as? String)?.trim() ?: ""
+            if (tipoExcluido.contains(tipo)) return@sumOf 0.0
+
+            val dist = (it["distancia"] as? Number)?.toDouble() ?: 0.0
+            val uni = (it["tipo_medicion"] as? String)?.lowercase() ?: ""
+            if (uni == "metros") dist / 1000.0 else dist
+        }
+    }
+}
+
+private fun calculateCentralTotal(
+    sesionesCentral: Any?,
+    tipoMedicion: String
+): Double {
+    val tipoExcluido = listOf("Flexibilidad", "Movilidad Articular", "Fortalecimiento")
+    val centralMap = sesionesCentral as? Map<String, Any>
+    val series = (centralMap?.get("series") as? List<*>)?.filterIsInstance<Map<String, Any>>() ?: emptyList()
+
+    if (series.isEmpty()) return 0.0
+
+    return if (tipoMedicion.lowercase() == "distancia") {
+        var sum = 0.0
+
+        for (serie in series) {
+            val sesiones = (serie["sesiones"] as? List<*>)?.filterIsInstance<Map<String, Any>>() ?: continue
+            var subtotal = 0.0
+
+            val ini = (serie["inicio"] as? Number)?.toInt() ?: -1
+            val fin = (serie["final"] as? Number)?.toInt() ?: -1
+            val rep = (serie["repeticiones"] as? Number)?.toDouble() ?: 1.0
+
+            val lista = if (ini != -1 && fin != -1 && ini < sesiones.size && fin < sesiones.size) {
+                sesiones.subList(ini, fin + 1)
+            } else {
+                sesiones
+            }
+
+            for (sesion in lista) {
+                val tipo = (sesion["tipo"] as? String)?.trim() ?: ""
+                if (tipoExcluido.contains(tipo)) continue
+
+                val dist = (sesion["distancia"] as? Number)?.toDouble() ?: 0.0
+                val uni = (sesion["tipo_medicion"] as? String)?.lowercase() ?: ""
+                subtotal += if (uni == "metros") dist / 1000.0 else dist
+            }
+
+            sum += subtotal * rep
+        }
+
+        sum
+    } else {
+        var sum = 0.0
+
+        for (serie in series) {
+            val sesiones = (serie["sesiones"] as? List<*>)?.filterIsInstance<Map<String, Any>>() ?: continue
+            val rep = (serie["repeticiones"] as? Number)?.toDouble() ?: 1.0
+
+            val subtotal = sesiones.sumOf {
+                val min = (it["duracion_min"] as? Number)?.toDouble() ?: 0.0
+                val sec = (it["duracion_seg"] as? Number)?.toDouble() ?: 0.0
+                min + sec / 60.0
+            }
+
+            sum += subtotal * rep
+        }
+
+        sum
     }
 }

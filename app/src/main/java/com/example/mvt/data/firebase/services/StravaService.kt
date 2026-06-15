@@ -6,6 +6,7 @@ import com.example.mvt.data.firebase.models.StravaConnection
 import com.example.mvt.data.firebase.models.StravaConnectionSnapshot
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -19,6 +20,7 @@ class StravaService {
 
     private val auth = FirebaseAuth.getInstance()
     private val realtime = FirebaseDatabase.getInstance().getReference("users")
+    private val firestore = FirebaseFirestore.getInstance()
 
     suspend fun getConnectionSnapshot(): StravaConnectionSnapshot {
         val uid = requireUid()
@@ -41,6 +43,13 @@ class StravaService {
         realtime.child(uid).child("showStrava").setValue(enabled).await()
     }
 
+    suspend fun disconnect() {
+        val uid = requireUid()
+        val connectionSnapshot = runCatching { getConnectionSnapshotOrNull(uid) }.getOrNull()
+
+        deleteFirestoreConnections(uid, connectionSnapshot)
+    }
+
     suspend fun exchangeToken(code: String, scope: String?): StravaConnection {
         val uid = requireUid()
         setSyncEnabled(true)
@@ -56,15 +65,16 @@ class StravaService {
         return parseConnection(response)
     }
 
-    fun buildAuthorizationUrl(): String {
+    fun buildAuthorizationUrl(state: String): String {
         val scope = "read,activity:read_all"
-        return Uri.parse("https://www.strava.com/oauth/authorize")
+        return Uri.parse("https://www.strava.com/oauth/mobile/authorize")
             .buildUpon()
             .appendQueryParameter("client_id", BuildConfig.STRAVA_CLIENT_ID)
             .appendQueryParameter("redirect_uri", BuildConfig.STRAVA_REDIRECT_URI)
             .appendQueryParameter("response_type", "code")
             .appendQueryParameter("approval_prompt", "auto")
             .appendQueryParameter("scope", scope)
+            .appendQueryParameter("state", state)
             .build()
             .toString()
     }
@@ -119,6 +129,58 @@ class StravaService {
         } finally {
             connection.disconnect()
         }
+    }
+
+    private suspend fun getConnectionSnapshotOrNull(uid: String): StravaConnection? {
+        val connection = postToFunctions(
+            endpoint = "stravaConnectionStatus",
+            body = JSONObject().put("id_deportista", uid)
+        )
+
+        return connection?.let(::parseConnection)
+    }
+
+    private suspend fun deleteFirestoreConnections(uid: String, connection: StravaConnection?) {
+        val collection = firestore.collection("strava_conexiones")
+        val references = linkedMapOf<String, com.google.firebase.firestore.DocumentReference>()
+
+        fun track(reference: com.google.firebase.firestore.DocumentReference) {
+            references[reference.path] = reference
+        }
+
+        track(collection.document(uid))
+
+        connection?.id
+            ?.takeIf { it.isNotBlank() }
+            ?.let { connectionId ->
+                track(collection.document(connectionId))
+
+                collection.whereEqualTo("id", connectionId)
+                    .get()
+                    .await()
+                    .documents
+                    .forEach { track(it.reference) }
+            }
+
+        collection.whereEqualTo("id_deportista", uid)
+            .get()
+            .await()
+            .documents
+            .forEach { track(it.reference) }
+
+        connection?.athleteId?.let { athleteId ->
+            collection.whereEqualTo("athlete_id", athleteId)
+                .get()
+                .await()
+                .documents
+                .forEach { track(it.reference) }
+        }
+
+        if (references.isEmpty()) return
+
+        val batch = firestore.batch()
+        references.values.forEach(batch::delete)
+        batch.commit().await()
     }
 
     private fun readBody(connection: HttpURLConnection, successful: Boolean): String? {

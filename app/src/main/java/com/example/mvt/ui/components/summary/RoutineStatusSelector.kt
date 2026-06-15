@@ -2,6 +2,7 @@ package com.example.mvt.ui.components.summary
 
 import android.util.Log
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +15,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.data.firebase.models.Routine
+import com.example.mvt.ui.theme.AccentRed
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.google.firebase.firestore.FirebaseFirestore
 
 private const val TAG = "RoutineStatusSelector"
@@ -37,7 +43,7 @@ fun RoutineStatusSelector(
     )
 
     // Estado interno controlado
-    var selected by remember {
+    var selected by remember(routine.id, routine.estado) {
         mutableStateOf(routine.estado)
     }
 
@@ -52,7 +58,7 @@ fun RoutineStatusSelector(
         Text(
             text = "Estado de la rutina",
             fontSize = 14.sp,
-            color = Color.White.copy(0.85f),
+            color = AppTextSecondary,
             modifier = Modifier.padding(bottom = 10.dp)
         )
 
@@ -75,14 +81,13 @@ fun RoutineStatusSelector(
                             Log.d(TAG, "🟠 Click en '$estado'")
 
                             selected = estado   // ← actualiza UI inmediata
+                            onEstadoActualizado?.invoke(estado)
                             Log.d(TAG, "🟢 Estado interno cambiado → '$selected'")
 
                             actualizarEstadoFirebase(
                                 id = routine.id,
                                 estado = estado
-                            ) {
-                                onEstadoActualizado?.invoke(estado)
-                            }
+                            )
                         }
                     }
                 }
@@ -116,12 +121,13 @@ private fun EstadoChip(
                 else
                     Brush.verticalGradient(
                         colors = listOf(
-                            Color.White.copy(alpha = 0.10f),
-                            Color.White.copy(alpha = 0.10f)
+                            AppSurfaceAlt,
+                            AppSurfaceAlt
                         )
-                    ),
+                ),
                 shape = RoundedCornerShape(18.dp)
             )
+            .border(1.dp, AppBorder, RoundedCornerShape(18.dp))
             .clickable { onClick() }
             .padding(horizontal = 14.dp),
         contentAlignment = Alignment.CenterStart
@@ -136,7 +142,7 @@ private fun EstadoChip(
                 modifier = Modifier
                     .size(10.dp)
                     .background(
-                        color = if (selected) highlightColor else Color.White.copy(0.4f),
+                        color = if (selected) highlightColor else AppTextSecondary.copy(0.4f),
                         shape = RoundedCornerShape(50)
                     )
             )
@@ -144,7 +150,7 @@ private fun EstadoChip(
             Text(
                 text = cleanStateLabel(label),
                 fontSize = 14.sp,
-                color = if (selected) Color.White else Color.White.copy(0.7f)
+                color = if (selected) AppTextPrimary else AppTextSecondary
             )
         }
     }
@@ -159,7 +165,7 @@ private fun getEstadoColor(estado: String): Color {
         "Parcial"      -> Color(0xFFFFCA99)
         "No_realizada" -> Color(0xFFFF6961)
         "Pendiente"    -> Color(0xFFE5DDE6)
-        else           -> Color.White.copy(alpha = 0.2f)
+        else           -> AppTextSecondary.copy(alpha = 0.2f)
     }
 }
 
@@ -174,8 +180,7 @@ private fun cleanStateLabel(label: String): String =
 // ================================================================
 private fun actualizarEstadoFirebase(
     id: String,
-    estado: String,
-    onSuccess: () -> Unit
+    estado: String
 ) {
     Log.d(TAG, "🔵 Actualizando Firebase → id='$id', estado='$estado'")
 
@@ -190,7 +195,6 @@ private fun actualizarEstadoFirebase(
         .update("estado", estado)
         .addOnSuccessListener {
             Log.d(TAG, "✅ Firebase actualizado → estado='$estado'")
-            onSuccess()
         }
         .addOnFailureListener { e ->
             Log.e(TAG, "❌ ERROR al actualizar Firebase → ${e.message}")
