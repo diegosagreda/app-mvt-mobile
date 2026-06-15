@@ -24,6 +24,8 @@ data class ChatUiState(
     val uid: String = "",
     val otherUid: String = "",
     val role: String = "deportista",
+    val isSendingMessage: Boolean = false,
+    val isUploadingImage: Boolean = false,
     val messageText: String = "",
     val replyingTo: ChatMessage? = null,
     val replyTo: ChatMessage? = null, // alias opcional
@@ -118,11 +120,11 @@ class ChatViewModel(
     }
 
     fun attachImage(uri: Uri?) {
-        _state.update { it.copy(imageUri = uri, audioUri = null) }
+        _state.update { it.copy(imageUri = uri, audioUri = null, editing = null) }
     }
 
     fun attachAudio(uri: Uri?) {
-        _state.update { it.copy(audioUri = uri, imageUri = null) }
+        _state.update { it.copy(audioUri = uri, imageUri = null, editing = null) }
     }
 
     fun sendTextMessage(text: String, replyToMessageId: String? = null) {
@@ -134,20 +136,38 @@ class ChatViewModel(
         val st = _state.value
         val hasText = st.messageText.trim().isNotEmpty()
         val hasMedia = st.audioUri != null || st.imageUri != null
-        if (!hasText && !hasMedia) return
+        if ((!hasText && !hasMedia) || st.isSendingMessage) return
 
         viewModelScope.launch {
+            _state.update {
+                it.copy(
+                    isSendingMessage = true,
+                    isUploadingImage = st.imageUri != null
+                )
+            }
+
             // ✅ MISMO FORMATO QUE WEB
             val nowIso = isoNow()
 
             var audioUrl = ""
             var imageUrl = ""
+            var uploadFailed = false
 
             runCatching {
                 st.audioUri?.let { audioUrl = repo.uploadAudio(st.uid, it) }
                 st.imageUri?.let { imageUrl = repo.uploadImage(st.uid, it) }
             }.onFailure {
+                uploadFailed = true
                 Log.e(TAG, "upload media failed: ${it.message}", it)
+            }
+
+            if (st.imageUri != null && imageUrl.isBlank()) {
+                uploadFailed = true
+            }
+
+            if (uploadFailed) {
+                _state.update { it.copy(isSendingMessage = false, isUploadingImage = false) }
+                return@launch
             }
 
             val msg = ChatMessage(
@@ -175,13 +195,30 @@ class ChatViewModel(
                     repo.updateMessage(convoId, editingId, st.messageText.trim(), st.role)
                 } else {
                     repo.addMessage(convoId, msg, st.role)
+                    repo.createChatNotification(
+                        remitente = st.uid,
+                        destinatario = st.otherUid,
+                        txt = msg.texto.ifBlank {
+                            when {
+                                msg.imageUrl.isNotBlank() -> "\uD83D\uDDBC\uFE0F Imagen"
+                                msg.audioUrl.isNotBlank() -> "\uD83C\uDFA4 Audio"
+                                else -> "Nuevo mensaje"
+                            }
+                        },
+                        tipo = if (msg.rutina.isNullOrBlank()) "chat" else "msg",
+                        rutina = msg.rutina.orEmpty()
+                    )
                 }
             }.onFailure {
                 Log.e(TAG, "send/update failed: ${it.message}", it)
+                _state.update { it.copy(isSendingMessage = false, isUploadingImage = false) }
+                return@launch
             }
 
             _state.update {
                 it.copy(
+                    isSendingMessage = false,
+                    isUploadingImage = false,
                     messageText = "",
                     replyingTo = null,
                     replyTo = null,
@@ -200,6 +237,23 @@ class ChatViewModel(
         viewModelScope.launch {
             runCatching { repo.deleteMessage(st.conversationId, messageId, st.role) }
                 .onFailure { Log.e(TAG, "delete failed: ${it.message}", it) }
+        }
+    }
+
+    fun toggleReaction(messageId: String, emoji: String) {
+        val st = _state.value
+        if (st.conversationId.isBlank() || st.uid.isBlank()) return
+
+        viewModelScope.launch {
+            runCatching {
+                repo.toggleReaction(
+                    conversationId = st.conversationId,
+                    messageId = messageId,
+                    userId = st.uid,
+                    emoji = emoji,
+                    senderRole = st.role
+                )
+            }.onFailure { Log.e(TAG, "toggleReaction failed: ${it.message}", it) }
         }
     }
 

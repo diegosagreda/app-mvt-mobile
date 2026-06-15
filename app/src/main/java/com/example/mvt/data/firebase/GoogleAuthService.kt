@@ -10,7 +10,6 @@ import com.google.android.gms.common.api.ApiException
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.ktx.auth
 import com.google.firebase.ktx.Firebase
-import com.google.firebase.database.FirebaseDatabase
 
 class GoogleAuthService(private val activity: Activity) {
 
@@ -24,13 +23,25 @@ class GoogleAuthService(private val activity: Activity) {
         GoogleSignIn.getClient(activity, gso)
     }
 
-    /** Retorna el Intent para iniciar el flujo de Google Sign-In */
-    fun getSignInIntent(): Intent = googleSignInClient.signInIntent
+    /** Limpia la cuenta recordada por Google antes de abrir el selector de cuentas. */
+    fun prepareSignInIntent(
+        onReady: (Intent) -> Unit,
+        onError: (String) -> Unit
+    ) {
+        googleSignInClient.signOut()
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    onReady(googleSignInClient.signInIntent)
+                } else {
+                    onError(task.exception?.message ?: "No fue posible preparar el inicio de sesión con Google.")
+                }
+            }
+    }
 
     /** Procesa el resultado del flujo de Google */
     fun handleSignInResult(
         data: Intent?,
-        onSuccess: () -> Unit,
+        onSuccess: (GoogleAccountProfile) -> Unit,
         onError: (String) -> Unit
     ) {
         try {
@@ -44,29 +55,37 @@ class GoogleAuthService(private val activity: Activity) {
 
     private fun firebaseAuthWithGoogle(
         account: GoogleSignInAccount,
-        onSuccess: () -> Unit,
+        onSuccess: (GoogleAccountProfile) -> Unit,
         onError: (String) -> Unit
     ) {
         val credential = GoogleAuthProvider.getCredential(account.idToken, null)
         auth.signInWithCredential(credential)
             .addOnSuccessListener {
-                val firebaseUser = auth.currentUser
-                if (firebaseUser != null) {
-                    val userRef = FirebaseDatabase.getInstance()
-                        .getReference("users/${firebaseUser.uid}")
-
-                    val userData = mapOf(
-                        "nombres" to (firebaseUser.displayName ?: ""),
-                        "email" to (firebaseUser.email ?: ""),
-                        "foto_url" to (firebaseUser.photoUrl?.toString() ?: "")
-                    )
-
-                    userRef.updateChildren(userData)
-                }
-                onSuccess()
+                onSuccess(account.toGoogleAccountProfile())
             }
             .addOnFailureListener { e ->
                 onError(e.message ?: "Error de autenticación con Google")
             }
     }
+
+    private fun GoogleSignInAccount.toGoogleAccountProfile(): GoogleAccountProfile {
+        return GoogleAccountProfile(
+            email = email.orEmpty(),
+            displayName = displayName.orEmpty(),
+            givenName = givenName.orEmpty(),
+            familyName = familyName.orEmpty(),
+            photoUrl = photoUrl?.toString().orEmpty()
+        )
+    }
 }
+
+data class GoogleAccountProfile(
+    val email: String,
+    val displayName: String,
+    val givenName: String,
+    val familyName: String,
+    val photoUrl: String,
+    val gender: String = "",
+    val phone: String = "",
+    val phonePrefix: String = ""
+)
