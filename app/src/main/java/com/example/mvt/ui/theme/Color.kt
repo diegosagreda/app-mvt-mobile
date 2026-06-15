@@ -8,6 +8,7 @@ val BorderDark = Color(0xFF35435A)
 val PrimaryBlue = Color(0xFF0066CC)
 val DarkText = Color(0xFFA2A5B9)
 val AccentRed = Color(0xFFFF42B4)
+val AppError = Color(0xFFE5484D)
 
 val AppBackground = DarkSidebar
 val AppSurface = BackgroundGreyDark

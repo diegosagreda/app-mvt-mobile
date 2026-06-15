@@ -8,6 +8,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 data class StravaConnectionUiState(
     val isLoading: Boolean = true,
@@ -16,6 +17,7 @@ data class StravaConnectionUiState(
     val isAuthVisible: Boolean = false,
     val authUrl: String = "",
     val redirectUri: String = "",
+    val authState: String = "",
     val errorMessage: String? = null,
     val successMessage: String? = null
 )
@@ -52,11 +54,13 @@ class StravaConnectionViewModel : ViewModel() {
     }
 
     fun openAuth() {
+        val authState = UUID.randomUUID().toString()
         _uiState.update {
             it.copy(
                 isAuthVisible = true,
-                authUrl = repository.buildAuthorizationUrl(),
+                authUrl = repository.buildAuthorizationUrl(authState),
                 redirectUri = repository.getRedirectUri(),
+                authState = authState,
                 errorMessage = null,
                 successMessage = null
             )
@@ -64,14 +68,25 @@ class StravaConnectionViewModel : ViewModel() {
     }
 
     fun closeAuth() {
-        _uiState.update { it.copy(isAuthVisible = false) }
+        _uiState.update { it.copy(isAuthVisible = false, authState = "") }
     }
 
     fun onAuthCancelled() {
         _uiState.update {
             it.copy(
                 isAuthVisible = false,
+                authState = "",
                 errorMessage = "La autorizacion con Strava fue cancelada."
+            )
+        }
+    }
+
+    fun onAuthLaunchFailed() {
+        _uiState.update {
+            it.copy(
+                isAuthVisible = false,
+                authState = "",
+                errorMessage = "No fue posible abrir Strava o el navegador seguro."
             )
         }
     }
@@ -79,17 +94,24 @@ class StravaConnectionViewModel : ViewModel() {
     fun toggleSync(enabled: Boolean) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
-            runCatching { repository.setSyncEnabled(enabled) }
+            runCatching {
+                if (enabled) {
+                    repository.setSyncEnabled(true)
+                } else {
+                    repository.disconnect()
+                }
+            }
                 .onSuccess {
                     if (enabled) {
                         load()
                     } else {
+                        val wasEnabled = _uiState.value.isEnabled
                         _uiState.update {
                             it.copy(
                                 isLoading = false,
-                                isEnabled = false,
+                                isEnabled = wasEnabled,
                                 connection = null,
-                                successMessage = "Sincronizacion con Strava desactivada."
+                                successMessage = "Conexion con Strava eliminada."
                             )
                         }
                     }
@@ -105,12 +127,25 @@ class StravaConnectionViewModel : ViewModel() {
         }
     }
 
-    fun exchangeCode(code: String, scope: String?) {
+    fun exchangeCode(code: String, scope: String?, state: String?) {
+        val expectedState = _uiState.value.authState
+        if (expectedState.isBlank() || state != expectedState) {
+            _uiState.update {
+                it.copy(
+                    isAuthVisible = false,
+                    authState = "",
+                    errorMessage = "La respuesta de Strava no es valida. Intenta de nuevo."
+                )
+            }
+            return
+        }
+
         viewModelScope.launch {
             _uiState.update {
                 it.copy(
                     isLoading = true,
                     isAuthVisible = false,
+                    authState = "",
                     errorMessage = null,
                     successMessage = null
                 )

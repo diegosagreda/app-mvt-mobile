@@ -22,7 +22,7 @@ private val DarkColorScheme = darkColorScheme(
     surfaceVariant = AppSurfaceAlt,
     onSurfaceVariant = AppTextSecondary,
     outline = AppBorder,
-    error = AccentRed,
+    error = AppError,
     onError = Color.White
 )
 

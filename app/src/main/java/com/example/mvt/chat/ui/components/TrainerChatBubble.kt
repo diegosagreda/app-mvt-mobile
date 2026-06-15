@@ -5,15 +5,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurface
 
 @Composable
 fun TrainerChatBubble(
@@ -27,7 +29,8 @@ fun TrainerChatBubble(
             .shadow(10.dp, CircleShape)
             .clickable(onClick = onClick),
         shape = CircleShape,
-        color = MaterialTheme.colorScheme.surface
+        color = AppSurface,
+        border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder)
     ) {
         // Si no hay foto aún, Coil mostrará vacío;
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -35,7 +38,9 @@ fun TrainerChatBubble(
                 model = photoUrl,
                 contentDescription = "Chat con entrenador",
                 contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(CircleShape)
             )
         }
     }
