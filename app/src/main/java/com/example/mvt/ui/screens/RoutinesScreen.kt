@@ -4,25 +4,25 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsRun
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.mvt.ui.components.CalendarDayCell
+import com.example.mvt.ui.components.SharedRoutineCard
 import com.example.mvt.ui.components.header.RoutinesHeader
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.ui.viewmodels.RoutineViewModel
 import com.example.mvt.domain.usecases.GetRoutinesByAthleteUseCase
@@ -37,6 +37,10 @@ import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,15 +63,6 @@ fun RoutinesScreen(
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
     val routines by routineViewModel.routines.collectAsState()
 
-    LaunchedEffect(Unit) {
-        Log.d("RoutinesScreen", "Iniciando carga de rutinas para ID: $currentAthleteId")
-        try {
-            routineViewModel.loadRoutines(currentAthleteId)
-        } catch (e: Exception) {
-            Log.e("RoutinesScreen", "Error al cargar rutinas", e)
-        }
-    }
-
     LaunchedEffect(routines) {
         Log.d("RoutinesScreen", "Se recibieron ${routines.size} rutinas desde Firestore")
         routines.forEach {
@@ -79,22 +74,45 @@ fun RoutinesScreen(
     val startMonth = remember { currentMonth.minusMonths(3) }
     val endMonth = remember { currentMonth.plusMonths(3) }
     val firstDayOfWeek = remember { DayOfWeek.MONDAY }
+    val state = rememberCalendarState(
+        startMonth = startMonth,
+        endMonth = endMonth,
+        firstVisibleMonth = currentMonth,
+        firstDayOfWeek = firstDayOfWeek
+    )
+
+    LaunchedEffect(currentAthleteId, state) {
+        if (currentAthleteId.isBlank()) return@LaunchedEffect
+
+        snapshotFlow { state.firstVisibleMonth.yearMonth }
+            .distinctUntilChanged()
+            .collectLatest { visibleMonth ->
+                Log.d(
+                    "RoutinesScreen",
+                    "Cargando rutinas para ID: $currentAthleteId en mes visible: $visibleMonth"
+                )
+
+                if (selectedDate.yearMonth != visibleMonth) {
+                    val targetDay = selectedDate.dayOfMonth.coerceAtMost(visibleMonth.lengthOfMonth())
+                    selectedDate = visibleMonth.atDay(targetDay)
+                }
+
+                try {
+                    routineViewModel.loadRoutinesForMonth(currentAthleteId, visibleMonth)
+                } catch (e: Exception) {
+                    Log.e("RoutinesScreen", "Error al cargar rutinas del mes $visibleMonth", e)
+                }
+            }
+    }
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF6F8FB))
+            .background(AppBackground)
     ) {
         RoutinesHeader() // ← componente movido
 
         Spacer(modifier = Modifier.height(12.dp))
-
-        val state = rememberCalendarState(
-            startMonth = startMonth,
-            endMonth = endMonth,
-            firstVisibleMonth = currentMonth,
-            firstDayOfWeek = firstDayOfWeek
-        )
 
         CalendarCard(
             state = state,
@@ -127,10 +145,9 @@ fun CalendarCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 12.dp)
             .shadow(3.dp, RoundedCornerShape(16.dp)),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = AppSurface)
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             MonthHeader(month = state.firstVisibleMonth)
@@ -143,18 +160,10 @@ fun CalendarCard(
                         date == day.date
                     }
 
-                    val dayColor = when {
-                        dayRoutines.any { it.estado.equals("Realizada", ignoreCase = true) } -> Color(0xFF77DD77)
-                        dayRoutines.any { it.estado.equals("Parcial", ignoreCase = true) } -> Color(0xFFFFCA99)
-                        dayRoutines.any { it.estado.equals("No_realizada", ignoreCase = true) } -> Color(0xFFFF6961)
-                        dayRoutines.any { it.estado.equals("Pendiente", ignoreCase = true) } -> Color(0xFFE5DDE6)
-                        else -> Color.Transparent
-                    }
-
                     DayCell(
                         day = day,
                         isSelected = day.date == selectedDate,
-                        backgroundColor = dayColor,
+                        routines = dayRoutines,
                         onClick = {
                             onDateSelected(day.date)
                             Log.d("RoutinesScreen", "Fecha seleccionada: ${day.date}")
@@ -170,28 +179,21 @@ fun CalendarCard(
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun DayCell(day: CalendarDay, isSelected: Boolean, backgroundColor: Color, onClick: () -> Unit) {
-    val finalColor = if (isSelected) PrimaryBlue.copy(alpha = 0.25f) else backgroundColor
-
-    Box(
-        modifier = Modifier
-            .aspectRatio(1f)
-            .padding(2.dp)
-            .background(finalColor, shape = RoundedCornerShape(8.dp))
-            .border(
-                width = if (isSelected) 2.dp else 1.dp,
-                color = if (isSelected) PrimaryBlue else Color.LightGray.copy(alpha = 0.6f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .clickable(enabled = day.position == DayPosition.MonthDate) { onClick() },
-        contentAlignment = Alignment.Center
-    ) {
-        Text(
-            text = day.date.dayOfMonth.toString(),
-            color = if (day.position == DayPosition.MonthDate) Color.Black else Color.LightGray,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-        )
-    }
+fun DayCell(day: CalendarDay, isSelected: Boolean, routines: List<Routine>, onClick: () -> Unit) {
+    val status = routines.firstOrNull { it.estado.equals("Realizada", true) }?.estado
+        ?: routines.firstOrNull { it.estado.equals("Parcial", true) }?.estado
+        ?: routines.firstOrNull { it.estado.equals("No_realizada", true) }?.estado
+        ?: routines.firstOrNull { it.estado.equals("Pendiente", true) }?.estado
+        ?: ""
+    CalendarDayCell(
+        isSelected = isSelected,
+        dayNumber = day.date.dayOfMonth.toString(),
+        enabled = day.position == DayPosition.MonthDate,
+        status = status,
+        hasRoutine = routines.isNotEmpty(),
+        muted = day.position != DayPosition.MonthDate,
+        onClick = onClick
+    )
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -212,9 +214,10 @@ fun RoutineListSection(
     Log.d("RoutinesScreen", "Rutinas encontradas para $selectedDate: ${dayRoutines.size}")
 
     Text(
-        text = "Rutinas del ${selectedDate.dayOfMonth} ${selectedDate.month.name.lowercase().replaceFirstChar { it.uppercase() }}",
+        text = "Rutinas del ${formatSpanishDayMonth(selectedDate)}",
         color = PrimaryBlue,
         fontWeight = FontWeight.Bold,
+        fontSize = 24.sp,
         modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp)
     )
 
@@ -227,7 +230,7 @@ fun RoutineListSection(
             item {
                 Text(
                     "No hay rutinas programadas para este día.",
-                    color = Color.Gray,
+                    color = AppTextSecondary,
                     modifier = Modifier.padding(24.dp),
                     fontSize = 15.sp
                 )
@@ -247,51 +250,14 @@ fun RoutineListSection(
 
 @Composable
 fun RoutineCard(routine: Routine, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 6.dp)
-            .clickable { onClick() },
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(6.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.DirectionsRun,
-                contentDescription = null,
-                tint = PrimaryBlue,
-                modifier = Modifier.size(36.dp)
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            Column {
-                Text(
-                    text = routine.titulo,
-                    fontWeight = FontWeight.Bold,
-                    color = PrimaryBlue,
-                    fontSize = 16.sp
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                val descripcionCorta = if (routine.descripcion.length > 100) {
-                    routine.descripcion.take(100) + "..."
-                } else routine.descripcion
-                Text(text = descripcionCorta, color = Color.Gray, fontSize = 14.sp)
-            }
-        }
-    }
+    SharedRoutineCard(routine = routine, onClick = onClick)
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MonthHeader(month: CalendarMonth) {
-    val title = "${month.yearMonth.month.name.lowercase().replaceFirstChar { it.uppercase() }} ${month.yearMonth.year}"
     Text(
-        text = title,
+        text = formatSpanishMonthYear(month.yearMonth),
         color = PrimaryBlue,
         fontSize = 18.sp,
         fontWeight = FontWeight.Bold,
@@ -299,4 +265,19 @@ fun MonthHeader(month: CalendarMonth) {
             .fillMaxWidth()
             .padding(bottom = 8.dp)
     )
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+private fun formatSpanishDayMonth(date: LocalDate): String {
+    val formatter = DateTimeFormatter.ofPattern("d 'de' MMMM", Locale("es", "CO"))
+    return date.format(formatter)
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+private fun formatSpanishMonthYear(month: YearMonth): String {
+    val formatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale("es", "CO"))
+    return month
+        .atDay(1)
+        .format(formatter)
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale("es", "CO")) else it.toString() }
 }

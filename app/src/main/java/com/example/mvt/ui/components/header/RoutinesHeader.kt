@@ -25,7 +25,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.app.ActivityCompat
-import com.example.mvt.ui.theme.PrimaryBlue
+import com.example.mvt.ui.theme.AppBackground
+import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextSecondary
 import com.google.android.gms.location.LocationServices
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -70,9 +74,9 @@ fun RoutinesHeader() {
 
     val gradient = Brush.verticalGradient(
         colors = listOf(
-            PrimaryBlue.copy(alpha = 1f),
-            PrimaryBlue.copy(alpha = 0.9f),
-            PrimaryBlue.copy(alpha = 0.6f)
+            AppBackground,
+            AppSurface,
+            AppSurfaceAlt
         ),
         startY = 0f,
         endY = 700f
@@ -108,7 +112,7 @@ fun RoutinesHeader() {
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
+                            .background(AppSurfaceAlt.copy(alpha = 0.92f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -142,7 +146,7 @@ fun RoutinesHeader() {
                         modifier = Modifier
                             .size(36.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.2f)),
+                            .background(AppSurfaceAlt.copy(alpha = 0.92f)),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
@@ -187,7 +191,7 @@ fun RoutinesHeader() {
                 Text(
                     text = "Consulta tus sesiones programadas",
                     fontSize = 15.sp,
-                    color = Color.White.copy(alpha = 0.85f)
+                    color = AppTextSecondary
                 )
             }
 
@@ -195,7 +199,7 @@ fun RoutinesHeader() {
                 modifier = Modifier
                     .height(1.5.dp)
                     .fillMaxWidth(0.3f)
-                    .background(Color.White.copy(alpha = 0.6f))
+                    .background(AppBorder)
             )
         }
     }

@@ -7,7 +7,8 @@ data class ChatMessage(
     val imageUrl: String = "",
     val remitente: String = "",
     val timestamp: String = "",
-    val rutina: String? = null
+    val rutina: String? = null,
+    val reactions: Map<String, String> = emptyMap()
 )
 
 
@@ -25,6 +26,14 @@ data class UiMessage(
     val groupLabel: String,
     val showGroupHeader: Boolean,
     val isMine: Boolean
+)
+
+data class ChatAlertState(
+    val conversationId: String = "",
+    val unreadForAthlete: Boolean = false,
+    val unreadCountForAthlete: Int = 0,
+    val latestIncomingMessage: ChatMessage? = null,
+    val isInitial: Boolean = true
 )
 
 data class TrainerPersonalData(
