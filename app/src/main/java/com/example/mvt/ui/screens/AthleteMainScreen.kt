@@ -471,7 +471,7 @@ fun AthleteMainScreen(
                             }
 
                             notification.tipo.equals("msg", ignoreCase = true) ||
-                                notification.tipo.equals("chat", ignoreCase = true) -> {
+                                    notification.tipo.equals("chat", ignoreCase = true) -> {
                                 onOpenChat()
                             }
 
@@ -530,16 +530,16 @@ private fun NotificationsSidePanel(
                         tonalElevation = 8.dp,
                         shadowElevation = 12.dp
                     ) {
-                    NotificationsScreen(
-                        uiState = uiState,
-                        onClose = onClose,
-                        onDismissError = onDismissError,
-                        onLoadMore = onLoadMore,
-                        onNotificationClick = onNotificationClick
-                    )
+                        NotificationsScreen(
+                            uiState = uiState,
+                            onClose = onClose,
+                            onDismissError = onDismissError,
+                            onLoadMore = onLoadMore,
+                            onNotificationClick = onNotificationClick
+                        )
+                    }
                 }
             }
-        }
         }
     }
 }

@@ -1,26 +1,34 @@
 package com.example.mvt.ui.components
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Straighten
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.data.firebase.models.DistanceOption
-import com.example.mvt.ui.theme.PrimaryBlue
+import com.example.mvt.ui.theme.*
 import java.text.SimpleDateFormat
 import java.util.Calendar
 import java.util.Date
@@ -28,22 +36,13 @@ import java.util.Locale
 import java.util.TimeZone
 
 // ==========================================
-// COLORES INTERNOS
-// ==========================================
-private val FieldBorderColor  = Color(0xFFD6D6D6)
-private val FieldTextColor    = Color(0xFF333333)
-private val LabelColor        = Color(0xFF1F2A44)
-private val PlaceholderColor  = Color(0xFFBDBDBD)
-
-// ==========================================
-// DIALOG PRINCIPAL
+// DIALOG PRINCIPAL (DISEÑO OSCURO PREMIUM)
 // ==========================================
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddPersonalRecordDialog(
     distanceOptions: List<DistanceOption>,
     onDismiss: () -> Unit,
-    // onSave recibe todos los datos para que el llamador los guarde
     onSave: (
         distancia: String,
         fecha: String,
@@ -66,63 +65,46 @@ fun AddPersonalRecordDialog(
     var tiempoS    by rememberSaveable { mutableStateOf("") }
     var fcPromedio by rememberSaveable { mutableStateOf("") }
 
-    // Para cuando el usuario elige "Otro"
     var otraDistancia  by rememberSaveable { mutableStateOf("") }
     var unidad         by rememberSaveable { mutableStateOf("km") }
     var expandedUnidad by remember { mutableStateOf(false) }
 
-    // === Errores de validación ===
+    // === Errores ===
     var distanciaError by remember { mutableStateOf(false) }
     var fechaError     by remember { mutableStateOf(false) }
     var tiempoError    by remember { mutableStateOf(false) }
 
-// Distancia normalizada a km para el cálculo del ritmo
     val distanciaParaRitmo = when {
         selectedDistance?.name == "Otro" && unidad == "m" ->
-            // metros → convertir a km para la fórmula de ritmo
             (otraDistancia.toDoubleOrNull() ?: 0.0) / 1000.0
         selectedDistance?.name == "Otro" ->
-            // km directo
             otraDistancia.toDoubleOrNull() ?: 0.0
         else ->
-            // Distancias fijas ya están en km en Firebase
             selectedDistance?.value?.toDoubleOrNull() ?: 0.0
     }
 
     val ritmoCalculado = calcularRitmo(tiempoH, tiempoM, tiempoS, distanciaParaRitmo)
 
-    // === DatePicker — límite hasta día actual ===
     val todayMaxUtcMillis = remember {
         val localNow = Calendar.getInstance()
         Calendar.getInstance(TimeZone.getTimeZone("UTC")).apply {
-            set(
-                localNow.get(Calendar.YEAR),
-                localNow.get(Calendar.MONTH),
-                localNow.get(Calendar.DAY_OF_MONTH),
-                23, 59, 59
-            )
+            set(localNow.get(Calendar.YEAR), localNow.get(Calendar.MONTH), localNow.get(Calendar.DAY_OF_MONTH), 23, 59, 59)
             set(Calendar.MILLISECOND, 999)
         }.timeInMillis
     }
 
     val selectableDates = remember(todayMaxUtcMillis) {
         object : SelectableDates {
-            override fun isSelectableDate(utcTimeMillis: Long) =
-                utcTimeMillis <= todayMaxUtcMillis
+            override fun isSelectableDate(utcTimeMillis: Long) = utcTimeMillis <= todayMaxUtcMillis
             override fun isSelectableYear(year: Int) = true
         }
     }
 
-    // FIX: estado del DatePicker creado aquí arriba para que no se reinicie
     val datePickerState = rememberDatePickerState(
         initialSelectedDateMillis = parseDateToMillis(fechaSeleccionada),
         selectableDates = selectableDates
     )
 
-    // ==========================================
-    // DATEPICKER — fuera del AlertDialog
-    // para evitar conflictos de z-index
-    // ==========================================
     if (showDatePicker) {
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
@@ -145,28 +127,28 @@ fun AddPersonalRecordDialog(
             dismissButton = {
                 OutlinedButton(
                     onClick = { showDatePicker = false },
-                    border  = BorderStroke(1.dp, PrimaryBlue),
+                    border  = BorderStroke(1.dp, AppBorder),
                     shape   = RoundedCornerShape(8.dp)
                 ) {
-                    Text("Cancelar", color = PrimaryBlue)
+                    Text("Cancelar", color = AppTextSecondary)
                 }
             },
-            colors = DatePickerDefaults.colors(containerColor = Color.White)
+            colors = DatePickerDefaults.colors(containerColor = AppSurface)
         ) {
             DatePicker(
                 state          = datePickerState,
                 showModeToggle = false,
                 colors = DatePickerDefaults.colors(
-                    containerColor             = Color.White,
-                    titleContentColor          = PrimaryBlue,
-                    headlineContentColor       = PrimaryBlue,
-                    weekdayContentColor        = Color(0xFF555B61),
+                    containerColor             = AppSurface,
+                    titleContentColor          = AppTextPrimary,
+                    headlineContentColor       = AppTextPrimary,
+                    weekdayContentColor        = AppTextSecondary,
                     navigationContentColor     = PrimaryBlue,
-                    yearContentColor           = Color(0xFF2B2E34),
+                    yearContentColor           = AppTextPrimary,
                     currentYearContentColor    = PrimaryBlue,
                     selectedYearContainerColor = PrimaryBlue,
                     selectedYearContentColor   = Color.White,
-                    dayContentColor            = Color(0xFF2B2E34),
+                    dayContentColor            = AppTextPrimary,
                     selectedDayContainerColor  = PrimaryBlue,
                     selectedDayContentColor    = Color.White,
                     todayContentColor          = PrimaryBlue,
@@ -176,305 +158,292 @@ fun AddPersonalRecordDialog(
         }
     }
 
-    // ==========================================
-    // DIALOG PRINCIPAL
-    // ==========================================
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor   = Color.White,
-        shape            = RoundedCornerShape(20.dp),
-        modifier         = Modifier.fillMaxWidth(),
-        title = {
-            Text(
-                text       = "Registro nueva marca",
-                fontSize   = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color      = LabelColor
-            )
-        },
-        text = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(max = 520.dp)
-                    .verticalScroll(rememberScrollState())
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier
+            .padding(24.dp)
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        content = {
+            Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = AppSurface,
+                border = BorderStroke(1.dp, AppBorder),
+                tonalElevation = 6.dp
             ) {
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // ==========================================
-                // DISTANCIA
-                // ==========================================
-                DialogLabel(text = "Distancia", required = true)
-                Spacer(modifier = Modifier.height(6.dp))
-
-                ExposedDropdownMenuBox(
-                    expanded         = expandedDistance,
-                    onExpandedChange = { expandedDistance = !expandedDistance }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                 ) {
-                    OutlinedTextField(
-                        value         = selectedDistance?.name ?: "Seleccione Uno",
-                        onValueChange = {},
-                        readOnly      = true,
-                        isError       = distanciaError,
-                        modifier      = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth(),
-                        trailingIcon  = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistance)
-                        },
-                        shape  = RoundedCornerShape(14.dp),
-                        colors = dialogFieldColors()
-                    )
-                    ExposedDropdownMenu(
-                        expanded         = expandedDistance,
-                        onDismissRequest = { expandedDistance = false },
-                        containerColor   = Color.White,
-                        shadowElevation  = 8.dp,
-                        shape            = RoundedCornerShape(14.dp)
-                    ) {
-                        distanceOptions.forEach { option ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        text  = option.name,
-                                        color = FieldTextColor
-                                    )
-                                },
-                                onClick = {
-                                    selectedDistance = option
-                                    distanciaError   = false
-                                    expandedDistance = false
-                                }
-                            )
-                        }
-                    }
-                }
-                if (distanciaError) {
-                    DialogErrorText("Selecciona una distancia")
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // ==========================================
-                // FECHA — FIX: Box clickeable encima del TextField
-                // ==========================================
-                DialogLabel(text = "Fecha", required = true)
-                Spacer(modifier = Modifier.height(6.dp))
-
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value         = fechaSeleccionada,
-                        onValueChange = {},
-                        readOnly      = true,
-                        enabled       = false,
-                        isError       = fechaError,
-                        placeholder   = { Text("Seleccione fecha", color = PlaceholderColor) },
-                        leadingIcon   = {
-                            Icon(
-                                imageVector        = Icons.Default.CalendarMonth,
-                                contentDescription = null,
-                                tint               = PrimaryBlue
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape    = RoundedCornerShape(14.dp),
-                        colors   = OutlinedTextFieldDefaults.colors(
-                            disabledBorderColor      = if (fechaError) Color.Red else FieldBorderColor,
-                            disabledContainerColor   = Color.White,
-                            disabledTextColor        = FieldTextColor,
-                            disabledPlaceholderColor = PlaceholderColor,
-                            disabledLeadingIconColor = PrimaryBlue
-                        )
-                    )
-                    // Box transparente encima para capturar el click
+                    // Header con degradado
                     Box(
                         modifier = Modifier
-                            .matchParentSize()
-                            .clickable { showDatePicker = true }
-                    )
-                }
-                if (fechaError) {
-                    DialogErrorText("Selecciona una fecha")
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // ==========================================
-                // TIEMPO MARCA
-                // ==========================================
-                DialogLabel(text = "Tiempo Marca", required = true)
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    DialogNumberField(
-                        value         = tiempoH,
-                        onValueChange = { tiempoH = it; tiempoError = false },
-                        placeholder   = "HH"
-                    )
-                    DialogNumberField(
-                        value         = tiempoM,
-                        onValueChange = { tiempoM = it; tiempoError = false },
-                        placeholder   = "MM"
-                    )
-                    DialogNumberField(
-                        value         = tiempoS,
-                        onValueChange = { tiempoS = it; tiempoError = false },
-                        placeholder   = "SS"
-                    )
-                }
-                if (tiempoError) {
-                    DialogErrorText("Ingresa el tiempo completo (HH, MM, SS)")
-                }
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // ==========================================
-                // RITMO — solo lectura, calculado
-                // ==========================================
-                DialogLabel(text = "Ritmo")
-                Spacer(modifier = Modifier.height(6.dp))
-
-                OutlinedTextField(
-                    value         = ritmoCalculado,
-                    onValueChange = {},
-                    enabled       = false,
-                    modifier      = Modifier.fillMaxWidth(),
-                    shape         = RoundedCornerShape(14.dp),
-                    colors        = OutlinedTextFieldDefaults.colors(
-                        disabledBorderColor    = FieldBorderColor,
-                        disabledContainerColor = Color.White,
-                        disabledTextColor      = FieldTextColor
-                    )
-                )
-
-                Spacer(modifier = Modifier.height(18.dp))
-
-                // ==========================================
-                // FC PROMEDIO
-                // ==========================================
-                DialogLabel(text = "FC Promedio")
-                Spacer(modifier = Modifier.height(6.dp))
-
-                DialogNumberField(
-                    value         = fcPromedio,
-                    onValueChange = { fcPromedio = it },
-                    placeholder   = "FC Promedio"
-                )
-
-                // ==========================================
-                // OTRO — campo extra si selecciona "Otro"
-                // ==========================================
-                if (selectedDistance?.name == "Otro") {
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    DialogLabel(text = "Otra Distancia")
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    OutlinedTextField(
-                        value = otraDistancia,
-                        onValueChange = {
-                            if (it.all { c -> c.isDigit() || c == '.' }) otraDistancia = it
-                        },
-                        placeholder = { Text("Ej: 3.5", color = PlaceholderColor) },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        singleLine = true,
-                        modifier   = Modifier.fillMaxWidth(),
-                        shape      = RoundedCornerShape(14.dp),
-                        colors     = dialogFieldColors()
-                    )
-
-                    Spacer(modifier = Modifier.height(18.dp))
-
-                    DialogLabel(text = "Unidad")
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    ExposedDropdownMenuBox(
-                        expanded         = expandedUnidad,
-                        onExpandedChange = { expandedUnidad = !expandedUnidad }
+                            .fillMaxWidth()
+                            .background(
+                                Brush.verticalGradient(
+                                    colors = listOf(AppSurfaceAlt, AppSurface),
+                                    startY = 0f, endY = Float.POSITIVE_INFINITY
+                                )
+                            )
+                            .padding(20.dp)
                     ) {
-                        OutlinedTextField(
-                            value         = unidad,
-                            onValueChange = {},
-                            readOnly      = true,
-                            modifier      = Modifier
-                                .menuAnchor()
-                                .fillMaxWidth(),
-                            trailingIcon  = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUnidad)
-                            },
-                            shape  = RoundedCornerShape(14.dp),
-                            colors = dialogFieldColors()
-                        )
-                        ExposedDropdownMenu(
-                            expanded         = expandedUnidad,
-                            onDismissRequest = { expandedUnidad = false },
-                            containerColor   = Color.White,
-                            shape            = RoundedCornerShape(14.dp)
-                        ) {
-                            listOf("km", "m").forEach { u ->
-                                DropdownMenuItem(
-                                    text    = { Text(u, color = FieldTextColor) },
-                                    onClick = { unidad = u; expandedUnidad = false }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(40.dp)
+                                    .background(AppPrimarySoft, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.History,
+                                    contentDescription = null,
+                                    tint = PrimaryBlue,
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(12.dp))
+                            Column {
+                                Text(
+                                    text = "Registro Marca",
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = AppTextPrimary
+                                )
+                                Text(
+                                    text = "Nueva marca personal",
+                                    fontSize = 12.sp,
+                                    color = AppTextSecondary
                                 )
                             }
                         }
                     }
-                }
 
-                Spacer(modifier = Modifier.height(12.dp))
-            }
-        },
-        confirmButton = {
-            // Botón habilitado solo cuando los obligatorios están completos
-            val camposCompletos =
-                selectedDistance != null &&
-                        fechaSeleccionada.isNotBlank() &&
-                        tiempoH.isNotBlank() &&
-                        tiempoM.isNotBlank() &&
-                        tiempoS.isNotBlank() &&
-                        (
-                                selectedDistance?.name != "Otro" ||
-                                        otraDistancia.isNotBlank()
-                                )
-            Button(
-                onClick = {
-                    // FIX #5: guardar distancia correcta
-                    val distanciaFinal = when {
-                        selectedDistance?.name == "Otro" && unidad == "m" ->
-                            // Convertir metros a km antes de guardar
-                            String.format(
-                                "%.3f",
-                                (otraDistancia.toDoubleOrNull() ?: 0.0) / 1000.0
+                    Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
+                        
+                        // DISTANCIA
+                        FormLabel(text = "Distancia", required = true)
+                        ExposedDropdownMenuBox(
+                            expanded = expandedDistance,
+                            onExpandedChange = { expandedDistance = !expandedDistance }
+                        ) {
+                            OutlinedTextField(
+                                value = selectedDistance?.name ?: "Seleccione marca",
+                                onValueChange = {},
+                                readOnly = true,
+                                isError = distanciaError,
+                                modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistance) },
+                                leadingIcon = { Icon(Icons.Default.Straighten, null, tint = if(distanciaError) AppError else AppIconMuted, modifier = Modifier.size(20.dp)) },
+                                shape = FormFieldShape,
+                                colors = formFieldColors()
                             )
-                        selectedDistance?.name == "Otro" ->
-                            otraDistancia
-                        else ->
-                            // Guardar el nombre de la distancia (1500, 10K, etc.)
-                            selectedDistance!!.name
+                            ExposedDropdownMenu(
+                                expanded = expandedDistance,
+                                onDismissRequest = { expandedDistance = false },
+                                containerColor = AppSurface,
+                                modifier = Modifier.background(AppSurface)
+                            ) {
+                                distanceOptions.forEach { option ->
+                                    DropdownMenuItem(
+                                        text = { Text(text = option.name, color = AppTextPrimary) },
+                                        onClick = {
+                                            selectedDistance = option
+                                            distanciaError = false
+                                            expandedDistance = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        if (distanciaError) DialogErrorText("Selecciona una distancia")
+
+                        FormSpacer()
+
+                        // FECHA
+                        FormLabel(text = "Fecha", required = true)
+                        Box(modifier = Modifier.fillMaxWidth()) {
+                            OutlinedTextField(
+                                value = fechaSeleccionada,
+                                onValueChange = {},
+                                readOnly = true,
+                                enabled = false,
+                                isError = fechaError,
+                                placeholder = { Text("dd/mm/aaaa", color = AppTextSecondary) },
+                                leadingIcon = { Icon(Icons.Default.CalendarMonth, null, tint = if(fechaError) AppError else PrimaryBlue, modifier = Modifier.size(20.dp)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = FormFieldShape,
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    disabledBorderColor = if (fechaError) AppError else AppBorder,
+                                    disabledContainerColor = Color.Transparent,
+                                    disabledTextColor = AppTextPrimary,
+                                    disabledPlaceholderColor = AppTextSecondary,
+                                    disabledLeadingIconColor = PrimaryBlue
+                                )
+                            )
+                            Box(modifier = Modifier.matchParentSize().clickable { showDatePicker = true })
+                        }
+                        if (fechaError) DialogErrorText("Selecciona una fecha")
+
+                        FormSpacer()
+
+                        // TIEMPO MARCA
+                        FormLabel(text = "Tiempo Marca", required = true)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Box(modifier = Modifier.weight(1f)) {
+                                DialogNumberField(
+                                    value = tiempoH,
+                                    onValueChange = { tiempoH = it; tiempoError = false },
+                                    placeholder = "HH",
+                                    leadingIcon = Icons.Default.Timer
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                DialogNumberField(
+                                    value = tiempoM,
+                                    onValueChange = { tiempoM = it; tiempoError = false },
+                                    placeholder = "MM"
+                                )
+                            }
+                            Box(modifier = Modifier.weight(1f)) {
+                                DialogNumberField(
+                                    value = tiempoS,
+                                    onValueChange = { tiempoS = it; tiempoError = false },
+                                    placeholder = "SS"
+                                )
+                            }
+                        }
+                        if (tiempoError) DialogErrorText("Ingresa el tiempo completo")
+
+                        FormSpacer()
+
+                        // RITMO Y FC PROMEDIO en fila
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                FormLabel(text = "Ritmo")
+                                OutlinedTextField(
+                                    value = ritmoCalculado,
+                                    onValueChange = {},
+                                    enabled = false,
+                                    leadingIcon = { Icon(Icons.Default.Speed, null, tint = AppIconMuted, modifier = Modifier.size(18.dp)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = FormFieldShape,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledBorderColor = AppBorder,
+                                        disabledContainerColor = AppSurfaceMuted,
+                                        disabledTextColor = AppTextPrimary,
+                                        disabledLeadingIconColor = AppIconMuted
+                                    )
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                FormLabel(text = "FC Prom")
+                                DialogNumberField(
+                                    value = fcPromedio,
+                                    onValueChange = { fcPromedio = it },
+                                    placeholder = "ppm",
+                                    leadingIcon = Icons.Default.Favorite
+                                )
+                            }
+                        }
+
+                        // OTRO (si aplica)
+                        if (selectedDistance?.name == "Otro") {
+                            FormSpacer()
+                            FormLabel(text = "Otra Distancia", required = true)
+                            OutlinedTextField(
+                                value = otraDistancia,
+                                onValueChange = { if (it.all { c -> c.isDigit() || c == '.' }) otraDistancia = it },
+                                placeholder = { Text("Ej: 3.5", color = AppTextSecondary) },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                singleLine = true,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = FormFieldShape,
+                                colors = formFieldColors()
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            FormLabel(text = "Unidad")
+                            ExposedDropdownMenuBox(
+                                expanded = expandedUnidad,
+                                onExpandedChange = { expandedUnidad = !expandedUnidad }
+                            ) {
+                                OutlinedTextField(
+                                    value = unidad,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    modifier = Modifier.menuAnchor().fillMaxWidth(),
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUnidad) },
+                                    shape = FormFieldShape,
+                                    colors = formFieldColors()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expandedUnidad,
+                                    onDismissRequest = { expandedUnidad = false },
+                                    containerColor = AppSurface
+                                ) {
+                                    listOf("km", "m").forEach { u ->
+                                        DropdownMenuItem(
+                                            text = { Text(u, color = AppTextPrimary) },
+                                            onClick = { unidad = u; expandedUnidad = false }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(24.dp))
+
+                        // BOTONES
+                        val camposCompletos = selectedDistance != null &&
+                                fechaSeleccionada.isNotBlank() &&
+                                tiempoH.isNotBlank() &&
+                                tiempoM.isNotBlank() &&
+                                tiempoS.isNotBlank() &&
+                                (selectedDistance?.name != "Otro" || otraDistancia.isNotBlank())
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = onDismiss,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(1.dp, AppBorder)
+                            ) {
+                                Text("Cancelar", color = AppTextSecondary)
+                            }
+                            Button(
+                                onClick = {
+                                    val distanciaFinal = when {
+                                        selectedDistance?.name == "Otro" && unidad == "m" ->
+                                            String.format(Locale.getDefault(), "%.3f", (otraDistancia.toDoubleOrNull() ?: 0.0) / 1000.0)
+                                        selectedDistance?.name == "Otro" -> otraDistancia
+                                        else -> selectedDistance!!.name
+                                    }
+                                    onSave(distanciaFinal, fechaSeleccionada, tiempoH, tiempoM, tiempoS, ritmoCalculado, fcPromedio)
+                                },
+                                enabled = camposCompletos,
+                                modifier = Modifier.weight(1f).height(48.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = PrimaryBlue,
+                                    disabledContainerColor = PrimaryBlue.copy(alpha = 0.3f)
+                                ),
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text("Guardar", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
+                        Spacer(modifier = Modifier.height(10.dp))
                     }
-                    onSave(
-                        distanciaFinal,
-                        fechaSeleccionada,
-                        tiempoH,
-                        tiempoM,
-                        tiempoS,
-                        ritmoCalculado,
-                        fcPromedio
-                    )
-                },
-                enabled = camposCompletos,  // ← deshabilitado hasta completar
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = PrimaryBlue,
-                    disabledContainerColor = PrimaryBlue.copy(alpha = 0.45f)
-                ),
-                shape = RoundedCornerShape(8.dp)
-            ) {
-                Text("Guardar", color = Color.White)
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(text = "Cancelar", color = FieldTextColor)
+                }
             }
         }
     )
@@ -485,24 +454,12 @@ fun AddPersonalRecordDialog(
 // ==========================================
 
 @Composable
-private fun DialogLabel(text: String, required: Boolean = false) {
-    androidx.compose.foundation.layout.Row(
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(text = text, fontSize = 15.sp, color = LabelColor)
-        if (required) {
-            Text(text = " *", color = Color.Red, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
 private fun DialogErrorText(text: String) {
     Text(
         text     = "*$text",
-        color    = Color.Red,
+        color    = AppError,
         fontSize = 12.sp,
-        modifier = androidx.compose.ui.Modifier.padding(start = 4.dp, top = 2.dp)
+        modifier = Modifier.padding(start = 4.dp, top = 2.dp)
     )
 }
 
@@ -510,30 +467,21 @@ private fun DialogErrorText(text: String) {
 private fun DialogNumberField(
     value: String,
     onValueChange: (String) -> Unit,
-    placeholder: String
+    placeholder: String,
+    leadingIcon: androidx.compose.ui.graphics.vector.ImageVector? = null
 ) {
     OutlinedTextField(
         value           = value,
         onValueChange   = { if (it.all { c -> c.isDigit() }) onValueChange(it) },
-        placeholder     = { Text(placeholder, color = PlaceholderColor) },
+        placeholder     = { Text(placeholder, color = AppTextSecondary, fontSize = 14.sp) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        leadingIcon     = leadingIcon?.let { { Icon(it, null, tint = AppIconMuted, modifier = Modifier.size(18.dp)) } },
         singleLine      = true,
-        modifier        = androidx.compose.ui.Modifier.fillMaxWidth(),
-        shape           = RoundedCornerShape(14.dp),
-        colors          = dialogFieldColors()
+        modifier        = Modifier.fillMaxWidth(),
+        shape           = FormFieldShape,
+        colors          = formFieldColors()
     )
 }
-
-@Composable
-private fun dialogFieldColors() = OutlinedTextFieldDefaults.colors(
-    focusedBorderColor    = PrimaryBlue,
-    unfocusedBorderColor  = FieldBorderColor,
-    focusedContainerColor = Color.White,
-    unfocusedContainerColor = Color.White,
-    focusedTextColor      = FieldTextColor,
-    unfocusedTextColor    = FieldTextColor,
-    cursorColor           = PrimaryBlue
-)
 
 private fun parseDateToMillis(dateText: String): Long? {
     if (dateText.isBlank()) return null
@@ -541,7 +489,7 @@ private fun parseDateToMillis(dateText: String): Long? {
         SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
             .apply { timeZone = TimeZone.getDefault() }
             .parse(dateText)?.time
-    } catch (e: Exception) { null }
+    } catch (_: Exception) { null }
 }
 
 private fun formatMillisToDate(millis: Long): String {
@@ -568,5 +516,5 @@ private fun calcularRitmo(
     val ritmoMinutos   = (ritmoSegundos / 60).toInt()
     val ritmoSecondsR  = (ritmoSegundos % 60).toInt()
 
-    return String.format("%d:%02d", ritmoMinutos, ritmoSecondsR)
+    return String.format(Locale.getDefault(), "%d:%02d", ritmoMinutos, ritmoSecondsR)
 }

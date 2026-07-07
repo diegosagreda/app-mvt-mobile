@@ -85,7 +85,7 @@ fun DrawerContent(
         DrawerItemData("Perfil", Icons.Default.Person, "profile"),
         DrawerItemData("Morfologia", Icons.Default.Accessibility, "morphology"),
         DrawerItemData("Capacidad Fisica", Icons.Default.FitnessCenter, "fitness"),
-        DrawerItemData("Rendimiento", Icons.Default.Timer, pendingRoute("performance")),
+        DrawerItemData("Rendimiento", Icons.Default.Timer, "performance"),
         DrawerItemData("Deportivo", Icons.Default.DirectionsBike, "sports"),
         DrawerItemData("Salud", Icons.Default.FavoriteBorder, "health"),
         DrawerItemData("Objetivos", Icons.Default.BarChart, "goals"),
