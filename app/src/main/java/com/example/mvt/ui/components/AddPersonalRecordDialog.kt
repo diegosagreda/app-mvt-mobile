@@ -170,7 +170,7 @@ fun AddPersonalRecordDialog(
                 shape = RoundedCornerShape(20.dp),
                 color = AppSurface,
                 border = BorderStroke(1.dp, AppBorder),
-                tonalElevation = 6.dp
+                tonalElevation = 0.dp
             ) {
                 Column(
                     modifier = Modifier
@@ -221,39 +221,46 @@ fun AddPersonalRecordDialog(
                     }
 
                     Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) {
-                        
+
+                        // ==========================================
                         // DISTANCIA
-                        FormLabel(text = "Distancia", required = true)
-                        ExposedDropdownMenuBox(
-                            expanded = expandedDistance,
-                            onExpandedChange = { expandedDistance = !expandedDistance }
-                        ) {
-                            OutlinedTextField(
-                                value = selectedDistance?.name ?: "Seleccione marca",
-                                onValueChange = {},
-                                readOnly = true,
-                                isError = distanciaError,
-                                modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistance) },
-                                leadingIcon = { Icon(Icons.Default.Straighten, null, tint = if(distanciaError) AppError else AppIconMuted, modifier = Modifier.size(20.dp)) },
-                                shape = FormFieldShape,
-                                colors = formFieldColors()
-                            )
-                            ExposedDropdownMenu(
+                        // ==========================================
+                        FormLegendField(
+                            label = {
+                                FormLegendLabel(text = "Distancia", required = true)
+                            }
+                        ) { modifier ->
+                            ExposedDropdownMenuBox(
                                 expanded = expandedDistance,
-                                onDismissRequest = { expandedDistance = false },
-                                containerColor = AppSurface,
-                                modifier = Modifier.background(AppSurface)
+                                onExpandedChange = { expandedDistance = !expandedDistance }
                             ) {
-                                distanceOptions.forEach { option ->
-                                    DropdownMenuItem(
-                                        text = { Text(text = option.name, color = AppTextPrimary) },
-                                        onClick = {
-                                            selectedDistance = option
-                                            distanciaError = false
-                                            expandedDistance = false
-                                        }
-                                    )
+                                OutlinedTextField(
+                                    value = selectedDistance?.name ?: "Seleccione marca",
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    isError = distanciaError,
+                                    modifier = modifier.menuAnchor().fillMaxWidth(),
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedDistance) },
+                                    leadingIcon = { Icon(Icons.Default.Straighten, null, tint = if (distanciaError) AppError else AppIconMuted, modifier = Modifier.size(20.dp)) },
+                                    shape = FormFieldShape,
+                                    colors = formFieldColors()
+                                )
+                                ExposedDropdownMenu(
+                                    expanded = expandedDistance,
+                                    onDismissRequest = { expandedDistance = false },
+                                    containerColor = AppSurface,
+                                    modifier = Modifier.background(AppSurface)
+                                ) {
+                                    distanceOptions.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = { Text(text = option.name, color = AppTextPrimary) },
+                                            onClick = {
+                                                selectedDistance = option
+                                                distanciaError = false
+                                                expandedDistance = false
+                                            }
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -261,28 +268,35 @@ fun AddPersonalRecordDialog(
 
                         FormSpacer()
 
+                        // ==========================================
                         // FECHA
-                        FormLabel(text = "Fecha", required = true)
-                        Box(modifier = Modifier.fillMaxWidth()) {
-                            OutlinedTextField(
-                                value = fechaSeleccionada,
-                                onValueChange = {},
-                                readOnly = true,
-                                enabled = false,
-                                isError = fechaError,
-                                placeholder = { Text("dd/mm/aaaa", color = AppTextSecondary) },
-                                leadingIcon = { Icon(Icons.Default.CalendarMonth, null, tint = if(fechaError) AppError else PrimaryBlue, modifier = Modifier.size(20.dp)) },
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = FormFieldShape,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    disabledBorderColor = if (fechaError) AppError else AppBorder,
-                                    disabledContainerColor = Color.Transparent,
-                                    disabledTextColor = AppTextPrimary,
-                                    disabledPlaceholderColor = AppTextSecondary,
-                                    disabledLeadingIconColor = PrimaryBlue
+                        // ==========================================
+                        FormLegendField(
+                            label = {
+                                FormLegendLabel(text = "Fecha", required = true)
+                            }
+                        ) { modifier ->
+                            Box(modifier = modifier.fillMaxWidth()) {
+                                OutlinedTextField(
+                                    value = fechaSeleccionada,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    enabled = false,
+                                    isError = fechaError,
+                                    placeholder = { Text("dd/mm/aaaa", color = AppTextSecondary) },
+                                    leadingIcon = { Icon(Icons.Default.CalendarMonth, null, tint = if (fechaError) AppError else AppIconMuted, modifier = Modifier.size(20.dp)) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = FormFieldShape,
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        disabledBorderColor = if (fechaError) AppError else AppBorder,
+                                        disabledContainerColor = Color.Transparent,
+                                        disabledTextColor = AppTextPrimary,
+                                        disabledPlaceholderColor = AppTextSecondary,
+                                        disabledLeadingIconColor = AppIconMuted
+                                    )
                                 )
-                            )
-                            Box(modifier = Modifier.matchParentSize().clickable { showDatePicker = true })
+                                Box(modifier = Modifier.matchParentSize().clickable { showDatePicker = true })
+                            }
                         }
                         if (fechaError) DialogErrorText("Selecciona una fecha")
 
@@ -321,78 +335,106 @@ fun AddPersonalRecordDialog(
 
                         FormSpacer()
 
+                        // ==========================================
                         // RITMO Y FC PROMEDIO en fila
+                        // ==========================================
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                FormLabel(text = "Ritmo")
-                                OutlinedTextField(
-                                    value = ritmoCalculado,
-                                    onValueChange = {},
-                                    enabled = false,
-                                    leadingIcon = { Icon(Icons.Default.Speed, null, tint = AppIconMuted, modifier = Modifier.size(18.dp)) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    shape = FormFieldShape,
-                                    colors = OutlinedTextFieldDefaults.colors(
-                                        disabledBorderColor = AppBorder,
-                                        disabledContainerColor = AppSurfaceMuted,
-                                        disabledTextColor = AppTextPrimary,
-                                        disabledLeadingIconColor = AppIconMuted
+                            Box(modifier = Modifier.weight(1f)) {
+                                FormLegendField(
+                                    label = {
+                                        FormLegendLabel(text = "Ritmo")
+                                    }
+                                ) { modifier ->
+                                    OutlinedTextField(
+                                        value = ritmoCalculado,
+                                        onValueChange = {},
+                                        enabled = false,
+                                        leadingIcon = { Icon(Icons.Default.Speed, null, tint = AppIconMuted, modifier = Modifier.size(18.dp)) },
+                                        modifier = modifier.fillMaxWidth(),
+                                        shape = FormFieldShape,
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            disabledBorderColor = AppBorder,
+                                            disabledContainerColor = AppSurfaceMuted,
+                                            disabledTextColor = AppTextPrimary,
+                                            disabledLeadingIconColor = AppIconMuted
+                                        )
                                     )
-                                )
+                                }
                             }
-                            Column(modifier = Modifier.weight(1f)) {
-                                FormLabel(text = "FC Prom")
-                                DialogNumberField(
-                                    value = fcPromedio,
-                                    onValueChange = { fcPromedio = it },
-                                    placeholder = "ppm",
-                                    leadingIcon = Icons.Default.Favorite
-                                )
+                            Box(modifier = Modifier.weight(1f)) {
+                                FormLegendField(
+                                    label = {
+                                        FormLegendLabel(text = "FC Prom")
+                                    }
+                                ) { modifier ->
+                                    Box(modifier = modifier.fillMaxWidth()) {
+                                        DialogNumberField(
+                                            value = fcPromedio,
+                                            onValueChange = { fcPromedio = it },
+                                            placeholder = "ppm",
+                                            leadingIcon = Icons.Default.Favorite
+                                        )
+                                    }
+                                }
                             }
                         }
 
+                        // ==========================================
                         // OTRO (si aplica)
+                        // ==========================================
                         if (selectedDistance?.name == "Otro") {
                             FormSpacer()
-                            FormLabel(text = "Otra Distancia", required = true)
-                            OutlinedTextField(
-                                value = otraDistancia,
-                                onValueChange = { if (it.all { c -> c.isDigit() || c == '.' }) otraDistancia = it },
-                                placeholder = { Text("Ej: 3.5", color = AppTextSecondary) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = FormFieldShape,
-                                colors = formFieldColors()
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-                            FormLabel(text = "Unidad")
-                            ExposedDropdownMenuBox(
-                                expanded = expandedUnidad,
-                                onExpandedChange = { expandedUnidad = !expandedUnidad }
-                            ) {
+                            FormLegendField(
+                                label = {
+                                    FormLegendLabel(text = "Otra Distancia", required = true)
+                                }
+                            ) { modifier ->
                                 OutlinedTextField(
-                                    value = unidad,
-                                    onValueChange = {},
-                                    readOnly = true,
-                                    modifier = Modifier.menuAnchor().fillMaxWidth(),
-                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUnidad) },
+                                    value = otraDistancia,
+                                    onValueChange = { if (it.all { c -> c.isDigit() || c == '.' }) otraDistancia = it },
+                                    placeholder = { Text("Ej: 3.5", color = AppTextSecondary) },
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                    singleLine = true,
+                                    modifier = modifier.fillMaxWidth(),
                                     shape = FormFieldShape,
                                     colors = formFieldColors()
                                 )
-                                ExposedDropdownMenu(
+                            }
+
+                            FormSpacer()
+
+                            FormLegendField(
+                                label = {
+                                    FormLegendLabel(text = "Unidad")
+                                }
+                            ) { modifier ->
+                                ExposedDropdownMenuBox(
                                     expanded = expandedUnidad,
-                                    onDismissRequest = { expandedUnidad = false },
-                                    containerColor = AppSurface
+                                    onExpandedChange = { expandedUnidad = !expandedUnidad }
                                 ) {
-                                    listOf("km", "m").forEach { u ->
-                                        DropdownMenuItem(
-                                            text = { Text(u, color = AppTextPrimary) },
-                                            onClick = { unidad = u; expandedUnidad = false }
-                                        )
+                                    OutlinedTextField(
+                                        value = unidad,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        modifier = modifier.menuAnchor().fillMaxWidth(),
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expandedUnidad) },
+                                        shape = FormFieldShape,
+                                        colors = formFieldColors()
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = expandedUnidad,
+                                        onDismissRequest = { expandedUnidad = false },
+                                        containerColor = AppSurface
+                                    ) {
+                                        listOf("km", "m").forEach { u ->
+                                            DropdownMenuItem(
+                                                text = { Text(u, color = AppTextPrimary) },
+                                                onClick = { unidad = u; expandedUnidad = false }
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -423,10 +465,11 @@ fun AddPersonalRecordDialog(
                             Button(
                                 onClick = {
                                     val distanciaFinal = when {
-                                        selectedDistance?.name == "Otro" && unidad == "m" ->
-                                            String.format(Locale.getDefault(), "%.3f", (otraDistancia.toDoubleOrNull() ?: 0.0) / 1000.0)
-                                        selectedDistance?.name == "Otro" -> otraDistancia
-                                        else -> selectedDistance!!.name
+                                        selectedDistance?.name == "Otro" -> {
+                                            if (unidad == "m") "${otraDistancia}m" else "${otraDistancia}K"
+                                        }
+                                        selectedDistance?.name == "1500" -> "1500m"
+                                        else -> selectedDistance?.name ?: ""
                                     }
                                     onSave(distanciaFinal, fechaSeleccionada, tiempoH, tiempoM, tiempoS, ritmoCalculado, fcPromedio)
                                 },

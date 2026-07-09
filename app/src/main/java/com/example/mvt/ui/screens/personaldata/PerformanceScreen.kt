@@ -40,6 +40,8 @@ import com.example.mvt.data.firebase.models.PersonalRecord
 import com.example.mvt.ui.components.AddPersonalRecordDialog
 import com.example.mvt.ui.components.FormConfirmationDialog
 import com.example.mvt.ui.components.FormErrorNotification
+import com.example.mvt.ui.components.FormLegendField
+import com.example.mvt.ui.components.FormLegendLabel
 import com.example.mvt.ui.components.FormSuccessNotification
 import com.example.mvt.ui.components.FormTooltip
 import com.example.mvt.ui.components.formFieldColors
@@ -121,7 +123,7 @@ fun PerformanceScreen(
                 viewModel.resetState()
             }
             is PerformanceUiState.DeleteSuccess -> {
-                showDeleteSuccess = true
+                // Ya se muestra instantáneamente en el onClick
                 viewModel.resetState()
             }
             is PerformanceUiState.Error -> {
@@ -190,7 +192,7 @@ fun PerformanceScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 8.dp)) {
 
                 // ==========================================
                 // SECCIÓN: TEST SEMICOOPER
@@ -213,94 +215,102 @@ fun PerformanceScreen(
                     Spacer(modifier = Modifier.height(16.dp))
 
                     // VAM readonly
-                    PerformanceFieldLabel(
-                        label   = "VAM",
-                        tooltip = "Es la velocidad máxima a la que puedes correr cuando tu consumo de oxígeno está al máximo nivel.",
-                        required = true
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value         = if (vamPreview.isNotBlank()) vamPreview else if (currentVam.isNotBlank()) currentVam else "",
-                        onValueChange = {},
-                        enabled       = false,
-                        placeholder   = { Text("Se calcula automáticamente", color = AppTextSecondary, fontSize = 13.sp) },
-                        leadingIcon   = {
-                            Icon(
-                                imageVector        = Icons.AutoMirrored.Filled.TrendingUp,
-                                contentDescription = null,
-                                tint               = AppIconMuted
+                    FormLegendField(
+                        label = {
+                            FormLegendLabel(
+                                text = "VAM",
+                                info = "Es la velocidad máxima a la que puedes correr cuando tu consumo de oxígeno está al máximo nivel.",
+                                required = true
                             )
-                        },
-                        modifier  = Modifier.fillMaxWidth(),
-                        shape     = RoundedCornerShape(14.dp),
-                        textStyle = TextStyle(color = AppTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
-                        colors    = OutlinedTextFieldDefaults.colors(
-                            disabledBorderColor      = AppBorder,
-                            disabledContainerColor   = AppSurfaceMuted,
-                            disabledTextColor        = AppTextPrimary,
-                            disabledPlaceholderColor = AppTextSecondary,
-                            disabledLeadingIconColor = AppIconMuted
+                        }
+                    ) { modifier ->
+                        OutlinedTextField(
+                            value         = if (vamPreview.isNotBlank()) vamPreview else if (currentVam.isNotBlank()) currentVam else "",
+                            onValueChange = {},
+                            enabled       = false,
+                            placeholder   = { Text("Se calcula automáticamente", color = AppTextSecondary, fontSize = 13.sp) },
+                            leadingIcon   = {
+                                Icon(
+                                    imageVector        = Icons.AutoMirrored.Filled.TrendingUp,
+                                    contentDescription = null,
+                                    tint               = AppIconMuted
+                                )
+                            },
+                            modifier  = modifier.fillMaxWidth(),
+                            shape     = RoundedCornerShape(14.dp),
+                            textStyle = TextStyle(color = AppTextPrimary, fontSize = 15.sp, fontWeight = FontWeight.SemiBold),
+                            colors    = OutlinedTextFieldDefaults.colors(
+                                disabledBorderColor      = AppBorder,
+                                disabledContainerColor   = AppSurfaceMuted,
+                                disabledTextColor        = AppTextPrimary,
+                                disabledPlaceholderColor = AppTextSecondary,
+                                disabledLeadingIconColor = AppIconMuted
+                            )
                         )
-                    )
+                    }
 
                     Spacer(modifier = Modifier.height(14.dp))
 
                     // TEST input
-                    PerformanceFieldLabel(
-                        label    = "Test",
-                        tooltip  = "Pruebas para conocer tu rendimiento deportivo.",
-                        required = true
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    OutlinedTextField(
-                        value         = testValue,
-                        onValueChange = {
-                            testValue = it.filter { c -> c.isDigit() }
-                            testError = testValue.isBlank()
-                            viewModel.updateCurrentTestValue(testValue)
-                        },
-                        isError       = testError,
-                        placeholder   = { Text("Distancia en metros", color = AppTextSecondary, fontSize = 13.sp) },
-                        leadingIcon   = {
-                            Icon(imageVector = Icons.Default.DirectionsRun, contentDescription = null, tint = if (testError) AppError else AppIconMuted)
-                        },
-                        trailingIcon  = {
-                            Column(
-                                modifier            = Modifier.padding(end = 4.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Icon(
-                                    imageVector        = Icons.Default.KeyboardArrowUp,
-                                    contentDescription = "Subir",
-                                    tint               = PrimaryBlue,
-                                    modifier           = Modifier.size(20.dp).clickable {
-                                        val actual = testValue.toIntOrNull() ?: 0
-                                        testValue  = (actual + 1).toString()
-                                        testError  = false
-                                        viewModel.updateCurrentTestValue(testValue)
-                                    }
-                                )
-                                Icon(
-                                    imageVector        = Icons.Default.KeyboardArrowDown,
-                                    contentDescription = "Bajar",
-                                    tint               = PrimaryBlue,
-                                    modifier           = Modifier.size(20.dp).clickable {
-                                        val actual = testValue.toIntOrNull() ?: 0
-                                        val nuevo  = if (actual > 0) actual - 1 else 0
-                                        testValue  = nuevo.toString()
-                                        testError  = testValue == "0" || testValue.isBlank()
-                                        viewModel.updateCurrentTestValue(testValue)
-                                    }
-                                )
-                            }
-                        },
-                        singleLine      = true,
-                        modifier        = Modifier.fillMaxWidth(),
-                        shape           = RoundedCornerShape(14.dp),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                        textStyle       = TextStyle(color = AppTextPrimary, fontSize = 15.sp),
-                        colors          = formFieldColors()
-                    )
+                    FormLegendField(
+                        label = {
+                            FormLegendLabel(
+                                text = "Test",
+                                info = "Pruebas para conocer tu rendimiento deportivo.",
+                                required = true
+                            )
+                        }
+                    ) { modifier ->
+                        OutlinedTextField(
+                            value         = testValue,
+                            onValueChange = {
+                                testValue = it.filter { c -> c.isDigit() }
+                                testError = testValue.isBlank()
+                                viewModel.updateCurrentTestValue(testValue)
+                            },
+                            isError       = testError,
+                            placeholder   = { Text("Distancia en metros", color = AppTextSecondary, fontSize = 13.sp) },
+                            leadingIcon   = {
+                                Icon(imageVector = Icons.Default.DirectionsRun, contentDescription = null, tint = if (testError) AppError else AppIconMuted)
+                            },
+                            trailingIcon  = {
+                                Column(
+                                    modifier            = Modifier.padding(end = 4.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Icon(
+                                        imageVector        = Icons.Default.KeyboardArrowUp,
+                                        contentDescription = "Subir",
+                                        tint               = PrimaryBlue,
+                                        modifier           = Modifier.size(20.dp).clickable {
+                                            val actual = testValue.toIntOrNull() ?: 0
+                                            testValue  = (actual + 1).toString()
+                                            testError  = false
+                                            viewModel.updateCurrentTestValue(testValue)
+                                        }
+                                    )
+                                    Icon(
+                                        imageVector        = Icons.Default.KeyboardArrowDown,
+                                        contentDescription = "Bajar",
+                                        tint               = PrimaryBlue,
+                                        modifier           = Modifier.size(20.dp).clickable {
+                                            val actual = testValue.toIntOrNull() ?: 0
+                                            val nuevo  = if (actual > 0) actual - 1 else 0
+                                            testValue  = nuevo.toString()
+                                            testError  = testValue == "0" || testValue.isBlank()
+                                            viewModel.updateCurrentTestValue(testValue)
+                                        }
+                                    )
+                                }
+                            },
+                            singleLine      = true,
+                            modifier        = modifier.fillMaxWidth(),
+                            shape           = RoundedCornerShape(14.dp),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            textStyle       = TextStyle(color = AppTextPrimary, fontSize = 15.sp),
+                            colors          = formFieldColors()
+                        )
+                    }
                     if (testError) {
                         Spacer(modifier = Modifier.height(4.dp))
                         Text(
@@ -315,7 +325,7 @@ fun PerformanceScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // ==========================================
-                // SECCIÓN: HISTORIAL VAM
+                // SECCIÓN: HISTORIAL VAM (rediseñado - tarjetas colapsables)
                 // ==========================================
                 PerformanceSectionCard(
                     title    = "Historial de VAM",
@@ -333,41 +343,11 @@ fun PerformanceScreen(
                         )
                     } else {
                         visibleRecords.forEachIndexed { index, record ->
-                            val isLatest        = index == 0
-                            val isLastVisible   = index == visibleRecords.lastIndex
-
-                            val bgColor     = when {
-                                isLatest       -> PrimaryBlue
-                                index % 2 == 1 -> AppSurfaceAlt
-                                else           -> AppSurfaceMuted
-                            }
-                            val titleColor  = if (isLatest) Color.White else AppTextSecondary
-                            val valueColor  = if (isLatest) Color.White else AppTextPrimary
-
-                            Surface(
-                                shape  = if (isLatest) RoundedCornerShape(12.dp) else RoundedCornerShape(8.dp),
-                                color  = bgColor,
-                                border = if (!isLatest) androidx.compose.foundation.BorderStroke(1.dp, AppBorder) else null,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("VAM",  color = titleColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                        Text(record.VAM, color = valueColor, fontSize = 13.sp, fontWeight = if (isLatest) FontWeight.Bold else FontWeight.Normal)
-                                    }
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = if (isLatest) Color.White.copy(alpha = 0.25f) else AppBorder, thickness = 0.5.dp)
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Test", color = titleColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                        Text(record.semicooper, color = valueColor, fontSize = 13.sp, fontWeight = if (isLatest) FontWeight.Bold else FontWeight.Normal)
-                                    }
-                                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = if (isLatest) Color.White.copy(alpha = 0.25f) else AppBorder, thickness = 0.5.dp)
-                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                        Text("Fecha", color = titleColor, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                                        Text(viewModel.formatFecha(record.fecha), color = valueColor, fontSize = 13.sp, fontWeight = if (isLatest) FontWeight.Bold else FontWeight.Normal)
-                                    }
-                                }
-                            }
-                            if (!isLastVisible) Spacer(modifier = Modifier.height(6.dp))
+                            VamHistoryCard(
+                                record        = record,
+                                isLatest      = index == 0,
+                                formattedDate = viewModel.formatFecha(record.fecha)
+                            )
                         }
 
                         if (shouldShowExpandButton) {
@@ -452,7 +432,7 @@ fun PerformanceScreen(
                             modifier = Modifier.clickable { showAddDialog = true }
                         ) {
                             Row(
-                                modifier            = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                                modifier            = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                                 verticalAlignment   = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
@@ -478,7 +458,10 @@ fun PerformanceScreen(
                         PersonalRecordsSection(
                             records    = personalRecords,
                             isDeleting = isDeleting,
-                            onDelete   = { index -> viewModel.deletePersonalRecord(index) }
+                            onDelete   = { index ->
+                                showDeleteSuccess = true // Notificación instantánea
+                                viewModel.deletePersonalRecord(index)
+                            }
                         )
                     }
                 }
@@ -654,7 +637,7 @@ private fun PerformanceHeroHeader(
 
     // Pill de VAM actual
     if (latestVam != "--") {
-        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Box(modifier = Modifier.padding(horizontal = 8.dp)) {
             Surface(
                 shape    = RoundedCornerShape(16.dp),
                 color    = AppSurface,
@@ -823,6 +806,186 @@ private fun EmptyStateMessage(icon: ImageVector, message: String) {
 }
 
 // ==========================================
+// TARJETA DE HISTORIAL VAM
+// ==========================================
+@Composable
+private fun VamHistoryCard(
+    record       : PerformanceRecord,
+    isLatest     : Boolean,
+    formattedDate: String
+) {
+    var isExpanded by rememberSaveable(record.fecha, record.VAM) { mutableStateOf(false) }
+
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { isExpanded = !isExpanded },
+        shape  = RoundedCornerShape(16.dp),
+        color  = when {
+            isLatest   -> Color(0xFF23395E)
+            isExpanded -> AppSurfaceMuted
+            else       -> AppSurfaceAlt
+        },
+        border = androidx.compose.foundation.BorderStroke(
+            width = 1.dp,
+            color = when {
+                isLatest   -> AppBorder.copy(alpha = 0.5f)
+                isExpanded -> PrimaryBlue.copy(alpha = 0.4f)
+                else       -> AppBorder.copy(alpha = 0.5f)
+            }
+        )
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+
+            // CABECERA (siempre visible)
+            Row(
+                modifier              = Modifier.fillMaxWidth(),
+                verticalAlignment     = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .background(
+                                if (isLatest) Color.White.copy(alpha = 0.2f) else PrimaryBlue.copy(alpha = 0.12f),
+                                CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector        = Icons.AutoMirrored.Filled.TrendingUp,
+                            contentDescription = null,
+                            tint               = if (isLatest) Color.White else PrimaryBlue,
+                            modifier           = Modifier.size(20.dp)
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Column {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text       = record.VAM,
+                                color      = if (isLatest) Color.White else AppTextPrimary,
+                                fontSize   = 18.sp,
+                                fontWeight = FontWeight.Bold
+                            )
+                            if (isLatest) {
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Surface(
+                                    shape = RoundedCornerShape(50.dp),
+                                    color = Color.White.copy(alpha = 0.2f)
+                                ) {
+                                    Text(
+                                        text       = "Actual",
+                                        fontSize   = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color      = Color.White,
+                                        modifier   = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+                                    )
+                                }
+                            }
+                        }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector        = Icons.Default.CalendarToday,
+                                contentDescription = null,
+                                tint               = if (isLatest) Color.White.copy(alpha = 0.75f) else AppIconMuted,
+                                modifier           = Modifier.size(11.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text     = formattedDate,
+                                color    = if (isLatest) Color.White.copy(alpha = 0.75f) else AppTextSecondary,
+                                fontSize = 12.sp
+                            )
+                        }
+                    }
+                }
+
+                Icon(
+                    imageVector        = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                    contentDescription = null,
+                    tint               = if (isLatest) Color.White else if (isExpanded) PrimaryBlue else AppIconMuted,
+                    modifier           = Modifier.size(24.dp)
+                )
+            }
+
+            // CONTENIDO EXPANDIBLE
+            AnimatedVisibility(
+                visible = isExpanded,
+                enter   = expandVertically(),
+                exit    = shrinkVertically()
+            ) {
+                Column {
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape    = RoundedCornerShape(12.dp),
+                        color    = if (isLatest) Color.White.copy(alpha = 0.12f) else AppSurface.copy(alpha = 0.5f),
+                        border   = androidx.compose.foundation.BorderStroke(
+                            0.5.dp,
+                            if (isLatest) Color.White.copy(alpha = 0.2f) else AppBorder.copy(alpha = 0.3f)
+                        )
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            VamDetailRow(
+                                icon     = Icons.Default.DirectionsRun,
+                                label    = "Distancia (Test)",
+                                value    = "${record.semicooper} m",
+                                isLatest = isLatest
+                            )
+                            VamDetailRow(
+                                icon     = Icons.AutoMirrored.Filled.TrendingUp,
+                                label    = "VAM calculada",
+                                value    = record.VAM,
+                                isLatest = isLatest
+                            )
+                            VamDetailRow(
+                                icon     = Icons.Default.CalendarToday,
+                                label    = "Fecha",
+                                value    = formattedDate,
+                                isLatest = isLatest
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun VamDetailRow(icon: ImageVector, label: String, value: String, isLatest: Boolean) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(
+                icon, null,
+                tint     = if (isLatest) Color.White.copy(alpha = 0.75f) else AppIconMuted,
+                modifier = Modifier.size(14.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                label,
+                color    = if (isLatest) Color.White.copy(alpha = 0.75f) else AppTextSecondary,
+                fontSize = 13.sp
+            )
+        }
+        Text(
+            text       = value,
+            color      = if (isLatest) Color.White else AppTextPrimary,
+            fontSize   = 13.sp,
+            fontWeight = FontWeight.Medium
+        )
+    }
+}
+
+// ==========================================
 // ZONA DE FRECUENCIA
 // ==========================================
 @Composable
@@ -832,8 +995,8 @@ private fun ZonaFrecuenciaItem(zone: FrequencyZone) {
         verticalAlignment     = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // Label pill (Ahora con el mismo diseño que las zonas de ritmo)
         Surface(
+            modifier = Modifier.width(62.dp),
             shape = RoundedCornerShape(50.dp),
             color = AppSurfaceAlt,
             border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.6f))
@@ -843,7 +1006,8 @@ private fun ZonaFrecuenciaItem(zone: FrequencyZone) {
                 color    = PrimaryBlue,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                modifier = Modifier.padding(vertical = 6.dp).fillMaxWidth(),
+                textAlign = TextAlign.Center
             )
         }
         // Valor min
@@ -893,6 +1057,7 @@ private fun ZonaRitmoItem(zone: RhythmZone) {
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Surface(
+            modifier = Modifier.width(62.dp),
             shape = RoundedCornerShape(50.dp),
             color = AppSurfaceAlt,
             border = androidx.compose.foundation.BorderStroke(1.dp, PrimaryBlue.copy(alpha = 0.6f))
@@ -902,7 +1067,8 @@ private fun ZonaRitmoItem(zone: RhythmZone) {
                 color    = PrimaryBlue,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                modifier = Modifier.padding(vertical = 6.dp).fillMaxWidth(),
+                textAlign = TextAlign.Center
             )
         }
         Surface(
@@ -1039,13 +1205,12 @@ private fun PersonalRecordsSection(
 
     // Lista de marcas
     currentItems.forEachIndexed { pageIndex, record ->
-        PersonalRecordItem(
-            record     = record,
-            isDeleting = isDeleting,
-            onDelete   = { onDelete(record.index) }
-        )
-        if (pageIndex < currentItems.lastIndex) {
-            HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp), color = AppBorder, thickness = 0.5.dp)
+        key(record.distancia, record.fecha, record.index) {
+            PersonalRecordItem(
+                record     = record,
+                isDeleting = isDeleting,
+                onDelete   = { onDelete(record.index) }
+            )
         }
     }
 
@@ -1104,7 +1269,11 @@ private fun PersonalRecordItem(
             title        = "¿Eliminar esta marca?",
             message      = "Esta acción no se puede revertir.",
             confirmLabel = "Sí, eliminar",
-            onConfirm    = { onDelete(); showDeleteDialog = false },
+            onConfirm    = {
+                isExpanded = false // Cierra la tarjeta inmediatamente
+                onDelete()
+                showDeleteDialog = false
+            },
             onDismiss    = { showDeleteDialog = false },
             destructive  = true
         )
@@ -1176,7 +1345,7 @@ private fun PersonalRecordItem(
                         }
                     }
                 }
-                
+
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = null,
@@ -1193,7 +1362,7 @@ private fun PersonalRecordItem(
             ) {
                 Column {
                     Spacer(modifier = Modifier.height(16.dp))
-                    
+
                     // Contenedor de detalles
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
