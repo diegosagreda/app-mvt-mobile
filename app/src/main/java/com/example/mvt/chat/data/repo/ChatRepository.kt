@@ -2,7 +2,10 @@ package com.example.mvt.chat.data.repo
 
 import android.net.Uri
 import android.util.Log
+import com.example.mvt.chat.data.model.ChatAlertState
 import com.example.mvt.chat.data.model.ChatMessage
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.ListenerRegistration
 import com.google.firebase.storage.FirebaseStorage
@@ -144,7 +147,8 @@ class ChatRepository(
                         imageUrl = m["imageUrl"]?.toString().orEmpty(),
                         remitente = m["remitente"]?.toString().orEmpty(),
                         timestamp = iso,
-                        rutina = m["rutina"]?.toString()
+                        rutina = m["rutina"]?.toString(),
+                        reactions = parseReactions(m["reactions"])
                     )
                 }.sortedBy { it.timestamp }
 
@@ -156,6 +160,82 @@ class ChatRepository(
                 )
 
                 onChange(list)
+            }
+    }
+
+    fun listenAthleteChatAlerts(
+        uid: String,
+        otherUid: String,
+        onChange: (ChatAlertState) -> Unit
+    ): ListenerRegistration {
+        var isInitialEmission = true
+        val expectedKey = participantsKey(uid, otherUid)
+
+        return db.collection("chat")
+            .whereArrayContains("participantes", uid)
+            .addSnapshotListener { snap, err ->
+                if (err != null || snap == null) {
+                    onChange(ChatAlertState(isInitial = isInitialEmission))
+                    isInitialEmission = false
+                    return@addSnapshotListener
+                }
+
+                val doc = snap.documents.firstOrNull { candidate ->
+                    val participants = candidate.get("participantes") as? List<*>
+                    val hasOther = participants?.any { it?.toString() == otherUid } == true
+                    val keyMatches = candidate.getString("participantsKey") == expectedKey
+                    hasOther || keyMatches
+                }
+
+                if (doc == null || !doc.exists()) {
+                    onChange(ChatAlertState(isInitial = isInitialEmission))
+                    isInitialEmission = false
+                    return@addSnapshotListener
+                }
+
+                val data = doc.data.orEmpty()
+                val unreadForAthlete = (data["lecturaDeportista"] as? Boolean) == false
+                val athleteLastSeenAt = data["ultimaLecturaDeportista"]?.toString().orEmpty()
+                val mensajesMap = data["mensajes"] as? Map<*, *>
+
+                val messages = (mensajesMap ?: emptyMap<Any, Any>()).entries.mapNotNull { (k, v) ->
+                    val id = k?.toString() ?: return@mapNotNull null
+                    val messageMap = v as? Map<*, *> ?: return@mapNotNull null
+                    ChatMessage(
+                        id = id,
+                        texto = messageMap["texto"]?.toString().orEmpty(),
+                        audioUrl = messageMap["audioUrl"]?.toString().orEmpty(),
+                        imageUrl = messageMap["imageUrl"]?.toString().orEmpty(),
+                        remitente = messageMap["remitente"]?.toString().orEmpty(),
+                        timestamp = messageMap["timestamp"]?.toString().orEmpty(),
+                        rutina = messageMap["rutina"]?.toString(),
+                        reactions = parseReactions(messageMap["reactions"])
+                    )
+                }.sortedBy { it.timestamp }
+
+                val latestIncoming = messages.lastOrNull { it.remitente == otherUid }
+                val unreadCountForAthlete = when {
+                    !unreadForAthlete -> 0
+                    athleteLastSeenAt.isNotBlank() -> {
+                        val lastSeenMillis = isoToEpochMillis(athleteLastSeenAt)
+                        messages.count { message ->
+                            message.remitente == otherUid &&
+                                isoToEpochMillis(message.timestamp) > lastSeenMillis
+                        }
+                    }
+                    else -> countTrailingIncomingMessages(messages, otherUid)
+                }
+
+                onChange(
+                    ChatAlertState(
+                        conversationId = doc.id,
+                        unreadForAthlete = unreadForAthlete,
+                        unreadCountForAthlete = unreadCountForAthlete,
+                        latestIncomingMessage = latestIncoming,
+                        isInitial = isInitialEmission
+                    )
+                )
+                isInitialEmission = false
             }
     }
 
@@ -209,7 +289,7 @@ class ChatRepository(
         Log.e(TAG, "[deleteMessage] convo=$conversationId messageId=$messageId role=$senderRole")
 
         val updates = hashMapOf<String, Any>(
-            "mensajes.$messageId" to com.google.firebase.firestore.FieldValue.delete(),
+            "mensajes.$messageId" to FieldValue.delete(),
             "lecturaDeportista" to (senderRole == "deportista"),
             "lecturaEntrenador" to (senderRole == "entrenador")
         )
@@ -217,16 +297,47 @@ class ChatRepository(
         Log.e(TAG, "[deleteMessage] done convo=$conversationId messageId=$messageId")
     }
 
+    suspend fun toggleReaction(
+        conversationId: String,
+        messageId: String,
+        userId: String,
+        emoji: String,
+        senderRole: String
+    ) {
+        val docRef = db.collection("chat").document(conversationId)
+        val snapshot = docRef.get().await()
+        val mensajes = snapshot.get("mensajes") as? Map<*, *>
+        val messageMap = mensajes?.get(messageId) as? Map<*, *>
+        val currentReaction = (messageMap?.get("reactions") as? Map<*, *>)?.get(userId)?.toString().orEmpty()
+        val reactionPath = "mensajes.$messageId.reactions.$userId"
+
+        val updates = hashMapOf<String, Any>(
+            "lecturaDeportista" to (senderRole == "deportista"),
+            "lecturaEntrenador" to (senderRole == "entrenador"),
+            reactionPath to if (currentReaction == emoji) FieldValue.delete() else emoji
+        )
+
+        docRef.update(updates).await()
+        Log.e(TAG, "[toggleReaction] convo=$conversationId messageId=$messageId userId=$userId emoji=$emoji")
+    }
+
     suspend fun markSeen(conversationId: String, role: String) {
         val field = if (role == "deportista") "lecturaDeportista" else "lecturaEntrenador"
+        val lastSeenField = if (role == "deportista") "ultimaLecturaDeportista" else "ultimaLecturaEntrenador"
+        val updates = hashMapOf<String, Any>(
+            field to true,
+            lastSeenField to isoNow()
+        )
         Log.e(TAG, "[markSeen] convo=$conversationId role=$role field=$field")
-        db.collection("chat").document(conversationId).update(field, true).await()
+        db.collection("chat").document(conversationId).update(updates).await()
         Log.e(TAG, "[markSeen] done convo=$conversationId")
     }
 
     suspend fun uploadImage(uid: String, uri: Uri): String {
         Log.e(TAG, "[uploadImage] uid=$uid uri=$uri")
-        val ref = storage.reference.child("chat/images/$uid/${UUID.randomUUID()}.jpg")
+        val timestamp = System.currentTimeMillis()
+        val extension = guessImageExtension(uri)
+        val ref = storage.reference.child("chatImagenes/$uid/imagen_${timestamp}.$extension")
         ref.putFile(uri).await()
         val url = ref.downloadUrl.await().toString()
         Log.e(TAG, "[uploadImage] done url=$url")
@@ -240,6 +351,38 @@ class ChatRepository(
         val url = ref.downloadUrl.await().toString()
         Log.e(TAG, "[uploadAudio] done url=$url")
         return url
+    }
+
+    suspend fun createChatNotification(
+        remitente: String,
+        destinatario: String,
+        txt: String,
+        tipo: String,
+        rutina: String
+    ) {
+        if (remitente.isBlank() || destinatario.isBlank()) return
+
+        db.collection("notificaciones")
+            .add(
+                hashMapOf(
+                    "tipo" to tipo,
+                    "remitente" to remitente,
+                    "destinatario" to destinatario,
+                    "txt" to txt,
+                    "fechaStr" to isoNow(),
+                    "fecha" to java.util.Date(),
+                    "estado" to "no_leido",
+                    "rutina" to rutina
+                )
+            )
+            .await()
+
+        FirebaseDatabase.getInstance()
+            .getReference("users")
+            .child(destinatario)
+            .child("notificaciones")
+            .setValue(true)
+            .await()
     }
 
     fun debugPing(from: String) {
@@ -256,5 +399,54 @@ class ChatRepository(
             0
         }
     }
-}
 
+    private fun isoToEpochMillis(iso: String): Long {
+        return try {
+            val fmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+            fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+            fmt.parse(iso)?.time ?: 0L
+        } catch (_: Exception) {
+            0L
+        }
+    }
+
+    private fun isoNow(): String {
+        val fmt = java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", java.util.Locale.US)
+        fmt.timeZone = java.util.TimeZone.getTimeZone("UTC")
+        return fmt.format(java.util.Date())
+    }
+
+    private fun countTrailingIncomingMessages(
+        messages: List<ChatMessage>,
+        otherUid: String
+    ): Int {
+        var count = 0
+        for (index in messages.indices.reversed()) {
+            val message = messages[index]
+            if (message.remitente != otherUid) break
+            count++
+        }
+        return count
+    }
+
+    private fun parseReactions(raw: Any?): Map<String, String> {
+        val reactionMap = raw as? Map<*, *> ?: return emptyMap()
+        return reactionMap.entries.mapNotNull { (key, value) ->
+            val userId = key?.toString().orEmpty()
+            val emoji = value?.toString().orEmpty()
+            if (userId.isBlank() || emoji.isBlank()) null else userId to emoji
+        }.toMap()
+    }
+
+    private fun guessImageExtension(uri: Uri): String {
+        val fromSegment = uri.lastPathSegment
+            ?.substringAfterLast('.', "")
+            ?.lowercase()
+            .orEmpty()
+
+        return when {
+            fromSegment in setOf("jpg", "jpeg", "png", "webp", "heic", "heif") -> fromSegment
+            else -> "jpg"
+        }
+    }
+}

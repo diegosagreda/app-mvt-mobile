@@ -17,6 +17,8 @@ class AuthRepository(private val authService: AuthService) {
         authService.sendPasswordReset(email)
     }
 
+    suspend fun getUserRole(uid: String): String = authService.getUserRole(uid)
+
     fun currentUser(): FirebaseUser? = authService.getCurrentUser()
 
     fun logout() = authService.signOut()

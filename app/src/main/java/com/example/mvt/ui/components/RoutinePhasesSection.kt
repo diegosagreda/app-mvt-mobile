@@ -1,6 +1,5 @@
 package com.example.mvt.ui.screens.components
 
-import android.R
 import android.util.Log
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -9,6 +8,7 @@ import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.SelfImprovement
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import com.example.mvt.ui.screens.components.model.PhaseExercise
 import com.example.mvt.ui.screens.components.model.TrainingPhase
 import com.example.mvt.ui.screens.components.phases.PhaseCardCentral
@@ -105,7 +105,12 @@ fun RoutinePhasesSection(
     }
 
     // === RENDER ===
-    Column(Modifier.fillMaxWidth()) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp, bottom = 6.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)
+    ) {
         fases.forEach { phase ->
             when (phase.nombre) {
                 "Fase Central" -> {
