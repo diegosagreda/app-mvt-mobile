@@ -399,9 +399,8 @@ fun AthleteMainScreen(
                     }
                     composable("subscription") {
                         SubscriptionScreen(
-                            athleteId = currentAthleteId,
-                            viewModel = subscriptionViewModel,
-                            onBack = { innerNavController.popBackStack() }
+                            navController = innerNavController,
+                            viewModel = subscriptionViewModel
                         )
                     }
                     composable(
