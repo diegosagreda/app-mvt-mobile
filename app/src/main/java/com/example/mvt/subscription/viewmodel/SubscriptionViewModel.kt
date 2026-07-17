@@ -4,6 +4,7 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.mvt.subscription.data.SubscriptionRepository
+import com.example.mvt.subscription.model.Cobro
 import com.example.mvt.subscription.model.PlanCatalogo
 import com.example.mvt.subscription.model.SubscriptionStatus
 import com.example.mvt.subscription.model.UserPlan
@@ -66,31 +67,41 @@ class SubscriptionViewModel : ViewModel() {
     private fun calcularEstado(
         userPlan: UserPlan,
         planCatalogo: PlanCatalogo,
-        cobros: List<com.example.mvt.subscription.model.Cobro>
+        cobros: List<Cobro>
     ): SubscriptionStatus {
 
-        val esPlanGratuito   = planCatalogo.precio == 0
-        val periodosDias     = planCatalogo.periodoActualizacion
-        val fechaInicio      = if (userPlan.fechaRegistro > 0)
-            formatTimestamp(userPlan.fechaRegistro) else "—"
+        // El plan Bronce es gratuito e ilimitado. Los demás duran 30 días.
+        val esPlanGratuito = userPlan.nombre.equals("Bronce", ignoreCase = true) || planCatalogo.precio == 0
+        val periodosDias   = if (esPlanGratuito) 0 else 30
+
+        // Usar el cobro más reciente aceptado para la fecha de inicio
+        // Si no hay cobros (plan gratuito), usar fecha_registro del usuario
+        val cobroMasReciente = cobros.firstOrNull()
+        val fechaInicioMs = when {
+            !esPlanGratuito && cobroMasReciente != null ->
+                cobroMasReciente.actualizadoEn
+            else ->
+                userPlan.fechaRegistro
+        }
+
+        val fechaInicio = if (fechaInicioMs > 0) formatTimestamp(fechaInicioMs) else "—"
 
         val fechaCorte: String
         val diasRestantes: Int
         val diasTotales: Int
         val progreso: Float
 
-        if (periodosDias == 0 || esPlanGratuito) {
-            // Plan sin vencimiento
+        if (esPlanGratuito) {
             fechaCorte    = "No aplica"
             diasRestantes = -1
             diasTotales   = 0
             progreso      = 1f
         } else {
-            // Plan con fecha de corte
-            val msCorte   = userPlan.fechaRegistro + (periodosDias * 24L * 60 * 60 * 1000)
-            val msAhora   = System.currentTimeMillis()
-            val diasUsados = ((msAhora - userPlan.fechaRegistro) / (1000L * 60 * 60 * 24))
-                .toInt().coerceAtLeast(0)
+            val msCorte    = fechaInicioMs + (periodosDias * 24L * 60 * 60 * 1000)
+            val msAhora    = System.currentTimeMillis()
+            val diasUsados = ((msAhora - fechaInicioMs) / (1000L * 60 * 60 * 24))
+                .toInt()
+                .coerceIn(0, periodosDias)
 
             fechaCorte    = formatTimestamp(msCorte)
             diasRestantes = maxOf(0, periodosDias - diasUsados)
@@ -120,4 +131,5 @@ class SubscriptionViewModel : ViewModel() {
             sdf.format(Date(timestamp))
         } catch (e: Exception) { "—" }
     }
+
 }

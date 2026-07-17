@@ -112,7 +112,7 @@ private fun SubscriptionContent(
                             colors = listOf(AppSurface, AppBackground)
                         )
                     )
-                    .padding(start = 8.dp, end = 16.dp, top = 16.dp, bottom = 24.dp)
+                    .padding(start = 4.dp, end = 12.dp, top = 16.dp, bottom = 20.dp)
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
@@ -153,7 +153,7 @@ private fun SubscriptionContent(
                 }
             }
 
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Column(modifier = Modifier.padding(horizontal = 8.dp)) {
 
                 // ==========================================
                 // TARJETAS RESUMEN (Imagen 1)
@@ -167,8 +167,8 @@ private fun SubscriptionContent(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val vigenciaTexto = if (status.diasRestantes == -1) "Sin vencimiento" else "${status.diasRestantes} días restantes"
-                val vigenciaSub   = if (status.esPlanGratuito) "Plan gratuito sin fecha de corte" else "Fecha de corte: ${status.fechaCorte}"
+                val vigenciaTexto = if (status.esPlanGratuito) "Sin vencimiento" else "${status.fechaInicio} a ${status.fechaCorte}"
+                val vigenciaSub   = if (status.esPlanGratuito) "Plan gratuito sin fecha de corte" else "Ciclo de ${status.diasTotales} días"
                 SummaryItemCard(
                     icon = Icons.Default.CalendarMonth,
                     iconColor = Color(0xFFFF8A65),
@@ -179,8 +179,8 @@ private fun SubscriptionContent(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                val diasTexto = if (status.diasRestantes == -1) "Sin vencimiento" else "${status.diasRestantes} días"
-                val diasSub   = if (status.esPlanGratuito) "No consume ciclo de vigencia" else "${status.diasTotales} días totales del plan"
+                val diasTexto = if (status.diasRestantes == -1) "Sin vencimiento" else "${status.diasRestantes}"
+                val diasSub   = if (status.esPlanGratuito) "No consume ciclo de vigencia" else "${status.diasTotales - maxOf(0, status.diasRestantes)} días usados"
                 SummaryItemCard(
                     icon = Icons.Default.Timer,
                     iconColor = Color(0xFF81C784),
@@ -290,14 +290,17 @@ private fun PlanVigenciaCard(status: SubscriptionStatus) {
 
             Surface(
                 shape = CircleShape,
-                color = AppSurfaceMuted,
-                border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder)
+                color = if (status.esPlanGratuito) AppSurfaceMuted else AppSuccess.copy(alpha = 0.12f),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (status.esPlanGratuito) Color(0xFF00A3FF).copy(alpha = 0.4f) else AppSuccess.copy(alpha = 0.4f)
+                )
             ) {
                 Text(
-                    text     = if (status.esPlanGratuito) "Plan gratuito" else status.userPlan.nombre,
+                    text     = if (status.esPlanGratuito) "Plan gratuito" else "Activa",
                     fontSize = 11.sp,
-                    color    = AppTextPrimary,
-                    fontWeight = FontWeight.SemiBold,
+                    color    = if (status.esPlanGratuito) Color(0xFF00A3FF) else AppSuccess,
+                    fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
                 )
             }
@@ -327,7 +330,7 @@ private fun PlanVigenciaCard(status: SubscriptionStatus) {
                     color    = AppTextSecondary
                 )
                 Text(
-                    text     = if (status.diasRestantes == -1) "Sin vencimiento" else "${status.diasRestantes} días restantes",
+                    text     = if (status.esPlanGratuito) "Sin vencimiento" else "${status.diasTotales} días",
                     fontSize = 12.sp,
                     color    = AppTextSecondary
                 )

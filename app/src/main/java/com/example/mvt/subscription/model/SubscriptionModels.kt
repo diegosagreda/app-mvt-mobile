@@ -33,7 +33,10 @@ data class Cobro(
     val fecha: String = "",
     val bank_name: String = "",
     val plan: String = "",
-    val recibo: String = ""
+    val recibo: String = "",
+    val factura: String = "",
+    val monto: Int = 0,
+    val actualizadoEn: Long = 0L    // para ordenar y calcular inicio
 )
 
 data class SubscriptionStatus(

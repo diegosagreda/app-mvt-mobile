@@ -144,23 +144,40 @@ class SubscriptionRepository {
 
             val cobros = mutableListOf<Cobro>()
             snapshot.children.forEach { child ->
-                val fecha    = child.key ?: return@forEach
-                val bankName = child.child("bank_name")
+                val fecha       = child.key ?: return@forEach
+                val bankName    = child.child("bank_name")
                     .getValue(String::class.java) ?: ""
-                val plan     = child.child("plan")
+                val plan        = child.child("plan")
                     .getValue(String::class.java) ?: ""
-                val recibo   = child.child("recibo").value?.toString() ?: ""
+                val recibo      = child.child("recibo").value?.toString() ?: ""
+                val estado      = child.child("estado")
+                    .getValue(String::class.java) ?: ""
+                val factura     = child.child("factura")
+                    .getValue(String::class.java) ?: ""
+                val monto       = child.child("monto").value.let {
+                    when (it) { is Long -> it.toInt(); is Double -> it.toInt(); else -> 0 }
+                }
+                val actualizadoEn = child.child("actualizado_en").value.let {
+                    when (it) { is Long -> it; is Double -> it.toLong(); else -> 0L }
+                }
+                val fechaTransaccion = child.child("fecha_transaccion")
+                    .getValue(String::class.java) ?: ""
 
-                cobros.add(Cobro(
-                    fecha    = fecha,
-                    bank_name = bankName,
-                    plan     = plan,
-                    recibo   = recibo
-                ))
+                // Solo incluir cobros aceptados
+                if (estado == "Aceptada") {
+                    cobros.add(Cobro(
+                        fecha            = fechaTransaccion.ifBlank { fecha },
+                        bank_name        = bankName,
+                        plan             = plan,
+                        recibo           = recibo,
+                        factura          = factura,
+                        monto            = monto,
+                        actualizadoEn    = actualizadoEn
+                    ))
+                }
             }
 
-            // Ordenar del más reciente al más antiguo
-            cobros.sortedByDescending { it.fecha }
+            cobros.sortedByDescending { it.actualizadoEn }
 
         } catch (e: Exception) {
             Log.e("SubscriptionRepo", "Error leyendo cobros", e)
