@@ -196,14 +196,6 @@ private fun SubscriptionContent(
                 // ==========================================
                 PlanVigenciaCard(status = status)
 
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // ==========================================
-                // HISTORIAL
-                // ==========================================
-                if (status.cobros.isNotEmpty()) {
-                    CobroHistorialCard(cobros = status.cobros)
-                }
             }
         }
     }
@@ -371,41 +363,6 @@ private fun VigenciaDetailRow(label: String, value: String) {
             fontWeight = FontWeight.Bold,
             color      = AppTextPrimary
         )
-    }
-}
-
-@Composable
-private fun CobroHistorialCard(cobros: List<Cobro>) {
-    Surface(
-        shape    = RoundedCornerShape(18.dp),
-        color    = AppSurface,
-        border   = androidx.compose.foundation.BorderStroke(1.dp, AppBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Default.Receipt,
-                    contentDescription = null,
-                    tint     = AppIconMuted,
-                    modifier = Modifier.size(20.dp)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(
-                    text       = "Historial de pagos",
-                    fontSize   = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                    color      = AppTextPrimary
-                )
-            }
-            Spacer(modifier = Modifier.height(16.dp))
-            cobros.forEachIndexed { index, cobro ->
-                CobroItem(cobro = cobro)
-                if (index < cobros.lastIndex) {
-                    HorizontalDivider(color = AppBorder.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 12.dp))
-                }
-            }
-        }
     }
 }
 

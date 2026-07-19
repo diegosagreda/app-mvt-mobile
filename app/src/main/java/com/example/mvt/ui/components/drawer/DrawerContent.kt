@@ -94,7 +94,7 @@ fun DrawerContent(
     val planesItems = listOf(
         DrawerItemData("Planes", Icons.Default.Map, "plans"),
         DrawerItemData("Suscripción", Icons.Default.CreditCard, "subscription"),
-        DrawerItemData("Facturacion", Icons.Default.ReceiptLong, pendingRoute("billing"))
+        DrawerItemData("Facturación", Icons.Default.ReceiptLong, "billing")
     )
     val entrenamientoItems = listOf(
         DrawerItemData("Tu Entrenador", Icons.Default.PersonPin, "trainer"),

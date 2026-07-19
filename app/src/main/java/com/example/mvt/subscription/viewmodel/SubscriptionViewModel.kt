@@ -10,6 +10,7 @@ import com.example.mvt.subscription.model.SubscriptionStatus
 import com.example.mvt.subscription.model.UserPlan
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -32,60 +33,39 @@ class SubscriptionViewModel : ViewModel() {
     val status: StateFlow<SubscriptionStatus> = _status
 
     // ==========================================
-    // CARGA INICIAL
+    // CARGA INICIAL Y OBSERVACIÓN EN TIEMPO REAL
     // ==========================================
     fun loadSubscription() {
         viewModelScope.launch {
             _uiState.value = SubscriptionUiState.Loading
-            try {
-                // 1. Obtener plan del usuario
-                val userPlan = repository.getUserPlan() ?: UserPlan()
-
-                // 2. Obtener catálogo del plan activo
-                val planCatalogo = repository.getPlanCatalogo(userPlan.nombre)
-                    ?: PlanCatalogo()
-
-                // 3. Obtener historial de cobros
-                val cobros = repository.getCobros()
-
-                // 4. Calcular estado
-                _status.value = calcularEstado(userPlan, planCatalogo, cobros)
-                _uiState.value = SubscriptionUiState.Success
-
-                Log.d("SubscriptionVM", "Plan: ${userPlan.nombre}, Período: ${planCatalogo.periodoActualizacion}")
-
-            } catch (e: Exception) {
-                Log.e("SubscriptionVM", "Error cargando suscripción", e)
-                _uiState.value = SubscriptionUiState.Error("Error al cargar la suscripción")
-            }
+            repository.getSubscriptionStream()
+                .catch { e ->
+                    Log.e("SubscriptionVM", "Error en stream suscripción", e)
+                    _uiState.value = SubscriptionUiState.Error("Error al cargar la suscripción")
+                }
+                .collect { (userPlan, planCatalogo, cobros) ->
+                    _status.value = calcularEstado(userPlan, planCatalogo, cobros)
+                    _uiState.value = SubscriptionUiState.Success
+                }
         }
     }
 
-    // ==========================================
-    // CALCULAR ESTADO DE LA SUSCRIPCIÓN
-    // ==========================================
     private fun calcularEstado(
         userPlan: UserPlan,
         planCatalogo: PlanCatalogo,
         cobros: List<Cobro>
     ): SubscriptionStatus {
 
-        // El plan Bronce es gratuito e ilimitado. Los demás duran 30 días.
         val esPlanGratuito = userPlan.nombre.equals("Bronce", ignoreCase = true) || planCatalogo.precio == 0
         val periodosDias   = if (esPlanGratuito) 0 else 30
 
-        // Usar el cobro más reciente aceptado para la fecha de inicio
-        // Si no hay cobros (plan gratuito), usar fecha_registro del usuario
         val cobroMasReciente = cobros.firstOrNull()
         val fechaInicioMs = when {
-            !esPlanGratuito && cobroMasReciente != null ->
-                cobroMasReciente.actualizadoEn
-            else ->
-                userPlan.fechaRegistro
+            !esPlanGratuito && cobroMasReciente != null -> cobroMasReciente.actualizadoEn
+            else -> userPlan.fechaRegistro
         }
 
         val fechaInicio = if (fechaInicioMs > 0) formatTimestamp(fechaInicioMs) else "—"
-
         val fechaCorte: String
         val diasRestantes: Int
         val diasTotales: Int
@@ -99,14 +79,15 @@ class SubscriptionViewModel : ViewModel() {
         } else {
             val msCorte    = fechaInicioMs + (periodosDias * 24L * 60 * 60 * 1000)
             val msAhora    = System.currentTimeMillis()
-            val diasUsados = ((msAhora - fechaInicioMs) / (1000L * 60 * 60 * 24))
-                .toInt()
-                .coerceIn(0, periodosDias)
+            val msPasados  = msAhora - fechaInicioMs
+            
+            val usados     = (msPasados / (1000L * 60 * 60 * 24)).toInt().coerceIn(0, periodosDias)
+            val restantes  = periodosDias - usados
 
             fechaCorte    = formatTimestamp(msCorte)
-            diasRestantes = maxOf(0, periodosDias - diasUsados)
+            diasRestantes = restantes
             diasTotales   = periodosDias
-            progreso      = (diasUsados.toFloat() / periodosDias.toFloat()).coerceIn(0f, 1f)
+            progreso      = (msPasados.toFloat() / (periodosDias * 24L * 60 * 60 * 1000).toFloat()).coerceIn(0f, 1f)
         }
 
         return SubscriptionStatus(
@@ -122,14 +103,10 @@ class SubscriptionViewModel : ViewModel() {
         )
     }
 
-    // ==========================================
-    // HELPERS
-    // ==========================================
     private fun formatTimestamp(timestamp: Long): String {
         return try {
             val sdf = SimpleDateFormat("d 'de' MMM 'de' yyyy", Locale("es", "CO"))
             sdf.format(Date(timestamp))
         } catch (e: Exception) { "—" }
     }
-
 }
