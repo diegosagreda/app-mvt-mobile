@@ -3,6 +3,7 @@ package com.example.mvt.ui.screens
 import android.Manifest
 import android.annotation.SuppressLint
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -59,6 +60,7 @@ import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Umbrella
 import androidx.compose.material.icons.filled.WbCloudy
 import androidx.compose.material.icons.filled.WbSunny
+import androidx.compose.material.icons.filled.Whatshot
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -81,8 +83,11 @@ import androidx.navigation.compose.*
 import androidx.navigation.navArgument
 import com.example.mvt.R
 import com.example.mvt.data.firebase.models.Routine
+import com.example.mvt.data.firebase.models.WeeklyRoutineAnalysis
+import com.example.mvt.data.firebase.models.WeeklyRoutineMetrics
 import com.example.mvt.data.firebase.repositories.NotificationRepository
 import com.example.mvt.data.firebase.repositories.RoutineRepository
+import com.example.mvt.data.firebase.services.CoachIntelligenceService
 import com.example.mvt.data.firebase.services.FirestoreService
 import com.example.mvt.domain.repositories.StravaRepository
 import com.example.mvt.ui.components.AthleteHeader
@@ -125,7 +130,6 @@ import com.google.android.gms.location.LocationServices
 import com.google.firebase.auth.FirebaseAuth
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -147,13 +151,13 @@ fun AthleteMainScreen(
     unreadMessagesCount: Int = 0
 ) {
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
     val pendingStravaRedirect by StravaAuthRedirectBus.redirects.collectAsState()
     val openNotificationsFromAlert by AthleteNotificationBus.requests.collectAsState()
     val innerStartDestination = if (pendingStravaRedirect != null) "connection" else "home"
     val innerNavController = rememberNavController()
     val stravaRepository = remember { StravaRepository() }
     val routineRepository = remember { RoutineRepository(FirestoreService()) }
+    val coachIntelligenceService = remember { CoachIntelligenceService() }
     val notificationsViewModel = remember { NotificationsViewModel(NotificationRepository()) }
     val trainerViewModel: TrainerViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val trainersCatalogViewModel: TrainersCatalogViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -191,10 +195,10 @@ fun AthleteMainScreen(
         ?.arguments
         ?.getString(UnderConstructionDestination.featureArg)
         ?.let(UnderConstructionDestination::routeFor)
-    val selectedInnerRoute = if (currentInnerRoute == UnderConstructionDestination.routePattern) {
-        currentFeatureRoute ?: currentInnerRoute
-    } else {
-        currentInnerRoute
+    val selectedInnerRoute = when {
+        currentInnerRoute == UnderConstructionDestination.routePattern -> currentFeatureRoute ?: currentInnerRoute
+        currentInnerRoute?.startsWith("routine_detail") == true -> "routines"
+        else -> currentInnerRoute
     }
     var isStravaConnected by remember { mutableStateOf(false) }
     var showNotificationsPanel by remember { mutableStateOf(false) }
@@ -266,10 +270,17 @@ fun AthleteMainScreen(
 
     // Loader inicial
     var showLoader by remember(pendingStravaRedirect) { mutableStateOf(pendingStravaRedirect == null) }
+    var sectionLoaderTarget by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(Unit) {
         if (pendingStravaRedirect != null) return@LaunchedEffect
         delay(2000)
         showLoader = false
+    }
+    LaunchedEffect(sectionLoaderTarget) {
+        if (sectionLoaderTarget != null) {
+            delay(650)
+            sectionLoaderTarget = null
+        }
     }
 
     Scaffold(
@@ -296,6 +307,9 @@ fun AthleteMainScreen(
                 currentRoute = selectedInnerRoute,
                 onNavigate = { route ->
                     if (currentInnerRoute != route) {
+                        if (route in mainAthleteRoutesWithLoader) {
+                            sectionLoaderTarget = route
+                        }
                         innerNavController.navigate(route) {
                             popUpTo(innerNavController.graph.startDestinationId) {
                                 saveState = true
@@ -324,17 +338,9 @@ fun AthleteMainScreen(
                             athleteName = user?.nombres ?: "Atleta",
                             athleteId = currentAthleteId,
                             routineRepository = routineRepository,
+                            coachIntelligenceService = coachIntelligenceService,
                             onOpenRoutine = { routine ->
-                                innerNavController.currentBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("routine_selected", routine)
-                                innerNavController.currentBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("ritmos", realtimeViewModel.ritmos.value)
-                                innerNavController.currentBackStackEntry
-                                    ?.savedStateHandle
-                                    ?.set("zonas", realtimeViewModel.zonas.value)
-                                innerNavController.navigate("routine_detail")
+                                innerNavController.navigateToRoutineDetail(routine.id)
                             }
                         )
                     }
@@ -386,41 +392,43 @@ fun AthleteMainScreen(
                             contentMode = RoutinesContentMode.STATISTICS
                         )
                     }
-                    composable("routine_detail") {
+                    composable(
+                        route = "routine_detail/{routineId}",
+                        arguments = listOf(
+                            navArgument("routineId") {
+                                type = NavType.StringType
+                            }
+                        )
+                    ) { backStackEntry ->
+                        val routineId = backStackEntry.arguments?.getString("routineId").orEmpty()
+                        var routine by remember(routineId) { mutableStateOf<Routine?>(null) }
+                        var isLoadingRoutine by remember(routineId) { mutableStateOf(true) }
+                        var routineLoadFailed by remember(routineId) { mutableStateOf(false) }
 
-                        Log.e("NavGraph", "──────────── Entrando a routine_detail ────────────")
-                        Log.e("NavGraph", "current = ${innerNavController.currentBackStackEntry}")
-                        Log.e("NavGraph", "previous = ${innerNavController.previousBackStackEntry}")
+                        LaunchedEffect(routineId) {
+                            isLoadingRoutine = true
+                            routineLoadFailed = false
+                            routine = runCatching {
+                                routineRepository.getRoutineById(routineId)
+                            }.onFailure { error ->
+                                Log.e("AthleteMainScreen", "Error cargando rutina $routineId", error)
+                            }.getOrNull()
+                            routineLoadFailed = routine == null
+                            isLoadingRoutine = false
+                        }
 
-                        val previous = innerNavController.previousBackStackEntry
-
-                        val routine = previous
-                            ?.savedStateHandle
-                            ?.get<Routine>("routine_selected")
-
-                        val ritmos = previous
-                            ?.savedStateHandle
-                            ?.get<Map<String, Any>>("ritmos")
-
-                        val zonas = previous
-                            ?.savedStateHandle
-                            ?.get<Map<String, Any>>("zonas")
-
-                        Log.e("NavGraph", "Routine = $routine")
-                        Log.e("NavGraph", "Routine.id = ${routine?.id}")
-                        Log.e("NavGraph", "Ritmos = $ritmos")
-                        Log.e("NavGraph", "Zonas = $zonas")
-
-                        if (routine != null) {
-                            RoutineDetailScreen(
-                                routine = routine,
-                                ritmos = ritmos,
-                                zonas = zonas,
+                        when {
+                            isLoadingRoutine -> LoaderOverlay()
+                            routine != null -> RoutineDetailScreen(
+                                routine = routine!!,
+                                ritmos = realtimeViewModel.ritmos.value,
+                                zonas = realtimeViewModel.zonas.value,
                                 onBackClick = { innerNavController.popBackStack() }
                             )
-                        } else {
-                            Log.e("NavGraph", "❌ routine es NULL – mostrando fallback")
-                            MissingRoutineScreen()
+                            else -> MissingRoutineScreen(
+                                loadFailed = routineLoadFailed,
+                                onBackClick = { innerNavController.popBackStack() }
+                            )
                         }
                     }
                     composable("notification_detail") {
@@ -584,26 +592,11 @@ fun AthleteMainScreen(
 
                         when {
                             notification.tipo.equals("rutina", ignoreCase = true) -> {
-                                scope.launch {
-                                    val routine = runCatching {
-                                        routineRepository.getRoutineById(notification.rutina)
-                                    }.getOrNull()
-
-                                    if (routine != null) {
-                                        innerNavController.currentBackStackEntry
-                                            ?.savedStateHandle
-                                            ?.set("routine_selected", routine)
-                                        innerNavController.currentBackStackEntry
-                                            ?.savedStateHandle
-                                            ?.set("ritmos", realtimeViewModel.ritmos.value)
-                                        innerNavController.currentBackStackEntry
-                                            ?.savedStateHandle
-                                            ?.set("zonas", realtimeViewModel.zonas.value)
-                                        innerNavController.navigate("routine_detail")
-                                    } else {
-                                        innerNavController.navigate("routines") {
-                                            launchSingleTop = true
-                                        }
+                                if (notification.rutina.isNotBlank()) {
+                                    innerNavController.navigateToRoutineDetail(notification.rutina)
+                                } else {
+                                    innerNavController.navigate("routines") {
+                                        launchSingleTop = true
                                     }
                                 }
                             }
@@ -631,6 +624,7 @@ fun AthleteMainScreen(
                 )
 
                 if (showLoader) LoaderOverlay()
+                if (sectionLoaderTarget != null) LoaderOverlay()
             }
         }
     }
@@ -648,6 +642,8 @@ private val athleteBottomNavItems = listOf(
     AthleteBottomNavItem("plan", "Plan", Icons.Default.Map),
     AthleteBottomNavItem("profile", "Perfil", Icons.Default.Person)
 )
+
+private val mainAthleteRoutesWithLoader = setOf("home", "routines", "statistics")
 
 private val planRoutes = setOf(
     "plan",
@@ -680,6 +676,13 @@ private fun NavController.navigateToPersonalDataHub() {
 private fun NavController.navigateToPlanHub() {
     navigate("plan") {
         popUpTo("plan") { inclusive = false }
+        launchSingleTop = true
+    }
+}
+
+private fun NavController.navigateToRoutineDetail(routineId: String) {
+    if (routineId.isBlank()) return
+    navigate("routine_detail/${Uri.encode(routineId)}") {
         launchSingleTop = true
     }
 }
@@ -1233,6 +1236,7 @@ private fun AthleteHomeDashboard(
     athleteName: String,
     athleteId: String,
     routineRepository: RoutineRepository,
+    coachIntelligenceService: CoachIntelligenceService,
     onOpenRoutine: (Routine) -> Unit
 ) {
     val context = LocalContext.current
@@ -1248,6 +1252,9 @@ private fun AthleteHomeDashboard(
     var previousActivity by remember(athleteId) { mutableStateOf<Routine?>(null) }
     var nextRoutine by remember(athleteId) { mutableStateOf<Routine?>(null) }
     var routinesError by remember(athleteId) { mutableStateOf<String?>(null) }
+    var coachAnalysisLoading by remember(athleteId) { mutableStateOf(true) }
+    var coachAnalysis by remember(athleteId) { mutableStateOf<WeeklyRoutineAnalysis?>(null) }
+    var coachAnalysisError by remember(athleteId) { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         if (androidx.core.app.ActivityCompat.checkSelfPermission(
@@ -1317,6 +1324,33 @@ private fun AthleteHomeDashboard(
         routinesLoading = false
     }
 
+    LaunchedEffect(athleteId) {
+        if (athleteId.isBlank()) {
+            coachAnalysisLoading = false
+            coachAnalysis = null
+            coachAnalysisError = null
+            return@LaunchedEffect
+        }
+
+        coachAnalysisLoading = true
+        coachAnalysisError = null
+        val result = runCatching {
+            withContext(Dispatchers.IO) {
+                coachIntelligenceService.getWeeklyRoutineAnalysis(athleteId)
+            }
+        }
+
+        result
+            .onSuccess { analysis ->
+                coachAnalysis = analysis
+            }
+            .onFailure {
+                coachAnalysis = null
+                coachAnalysisError = "Coach Intelligent no está disponible ahora."
+            }
+        coachAnalysisLoading = false
+    }
+
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
@@ -1342,19 +1376,23 @@ private fun AthleteHomeDashboard(
             )
         }
         item {
-            LastActivityCard(
-                isLoading = routinesLoading,
-                routine = previousActivity,
-                errorMessage = routinesError
+            CoachInsightCard(
+                isLoading = coachAnalysisLoading,
+                analysis = coachAnalysis,
+                errorMessage = coachAnalysisError
             )
-        }
-        item {
-            CoachInsightCard()
         }
         item {
             NextRoutineCard(
                 isLoading = routinesLoading,
                 routine = nextRoutine,
+                errorMessage = routinesError
+            )
+        }
+        item {
+            LastActivityCard(
+                isLoading = routinesLoading,
+                routine = previousActivity,
                 errorMessage = routinesError
             )
         }
@@ -2164,20 +2202,234 @@ private fun PreviousActivityContent(routine: Routine) {
 }
 
 @Composable
-private fun CoachInsightCard() {
+private fun CoachInsightCard(
+    isLoading: Boolean,
+    analysis: WeeklyRoutineAnalysis?,
+    errorMessage: String?
+) {
     HomePremiumCard(
         brush = Brush.linearGradient(
-            listOf(AppSurface, Color(0xFF243A54))
+            listOf(Color(0xFF101824), Color(0xFF1C3147))
         )
     ) {
-        SectionTitle(icon = Icons.Default.SportsScore, title = "Coach IntelliG")
+        CoachInsightHeader(analysis = analysis)
         Spacer(Modifier.height(12.dp))
+
+        when {
+            isLoading -> HomeSectionMessage(
+                icon = Icons.Default.Cloud,
+                title = "Analizando tu semana",
+                message = "Estamos preparando una lectura breve para tu entrenamiento.",
+                accent = PrimaryBlue
+            )
+
+            errorMessage != null -> HomeSectionMessage(
+                icon = Icons.Default.Info,
+                title = "Coach no disponible",
+                message = errorMessage,
+                accent = Color(0xFFFFC857)
+            )
+
+            analysis == null || !analysis.hasCoachInsightContent() -> HomeSectionMessage(
+                icon = Icons.Default.Analytics,
+                title = "Sin análisis todavía",
+                message = "Cuando se genere tu análisis semanal, aparecerá aquí.",
+                accent = Color(0xFF62D9A8)
+            )
+
+            else -> CoachInsightContent(analysis = analysis)
+        }
+    }
+}
+
+private fun WeeklyRoutineAnalysis.hasCoachInsightContent(): Boolean {
+    return resumen.isNotBlank() ||
+        foco_hoy.isNotBlank() ||
+        balance.isNotBlank() ||
+        mejora.isNotBlank() ||
+        descanso.isNotBlank()
+}
+
+private fun WeeklyRoutineAnalysis.weekLabel(): String {
+    val start = semana?.inicio?.takeIf { it.isNotBlank() }
+    val end = semana?.fin?.takeIf { it.isNotBlank() }
+    return if (start != null && end != null) {
+        "Semana $start al $end"
+    } else {
+        fecha.takeIf { it.isNotBlank() }?.let { "Actualizado $it" }.orEmpty()
+    }
+}
+
+private fun WeeklyRoutineMetrics.completedSessionsLabel(): String {
+    val completed = realizadas + parciales
+    return if (total > 0) "$completed/$total" else "0"
+}
+
+private fun String.coachStatusLabel(): String {
+    return when (trim().lowercase()) {
+        "rutina_hoy" -> "Hoy"
+        "descanso_hoy" -> "Descanso"
+        "sin_rutinas" -> "Sin rutinas"
+        else -> replace("_", " ").replaceFirstChar {
+            if (it.isLowerCase()) it.titlecase(Locale("es", "CO")) else it.toString()
+        }
+    }
+}
+
+private fun String.coachStatusColor(): Color {
+    return when (trim().lowercase()) {
+        "rutina_hoy" -> PrimaryBlue
+        "descanso_hoy" -> Color(0xFF62D9A8)
+        "sin_rutinas" -> Color(0xFFFFC857)
+        else -> PrimaryBlue
+    }
+}
+
+@Composable
+private fun CoachInsightHeader(analysis: WeeklyRoutineAnalysis?) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(RoundedCornerShape(13.dp))
+                .background(PrimaryBlue.copy(alpha = 0.16f)),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.Whatshot,
+                contentDescription = null,
+                tint = Color(0xFFFFC857),
+                modifier = Modifier.size(20.dp)
+            )
+        }
         Text(
-            text = "Vas bien esta semana. Para hoy, prioriza controlar el ritmo en la primera mitad del entrenamiento.",
+            text = "Tu Estado",
+            color = Color.White,
+            fontSize = 15.sp,
+            lineHeight = 19.sp,
+            fontWeight = FontWeight.Black,
+            modifier = Modifier.weight(1f)
+        )
+        analysis?.estado?.takeIf { it.isNotBlank() }?.let { status ->
+            StatusBadge(status.coachStatusLabel(), status.coachStatusColor())
+        }
+    }
+}
+
+@Composable
+private fun CoachInsightContent(analysis: WeeklyRoutineAnalysis) {
+    val metrics = analysis.metricas
+    val focus = analysis.foco_hoy.ifBlank { analysis.resumen }
+
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            text = analysis.resumen.ifBlank { "Tu coach ya tiene una lectura de esta semana." },
             color = Color.White,
             fontSize = 14.sp,
-            lineHeight = 20.sp,
-            fontWeight = FontWeight.SemiBold
+            lineHeight = 19.sp,
+            fontWeight = FontWeight.Bold
+        )
+
+        CoachFocusPanel(text = focus)
+
+        if (metrics != null) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                MetricChip(
+                    value = metrics.completedSessionsLabel(),
+                    label = "Avance",
+                    modifier = Modifier.weight(1f)
+                )
+                MetricChip(
+                    value = metrics.cumplimiento_promedio?.let { "$it%" } ?: "Sin dato",
+                    label = "Cumplimiento",
+                    modifier = Modifier.weight(1f)
+                )
+                MetricChip(
+                    value = metrics.pendientes.toString(),
+                    label = "Pendientes",
+                    modifier = Modifier.weight(1f)
+                )
+            }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            CoachAdviceChip(
+                title = "Mejora",
+                text = analysis.mejora.ifBlank { "Mantén técnica y control de intensidad." },
+                accent = Color(0xFFFFC857),
+                modifier = Modifier.weight(1f)
+            )
+            CoachAdviceChip(
+                title = "Recupera",
+                text = analysis.descanso.ifBlank { "Prioriza hidratación, movilidad y sueño." },
+                accent = Color(0xFF62D9A8),
+                modifier = Modifier.weight(1f)
+            )
+        }
+    }
+}
+
+@Composable
+private fun CoachFocusPanel(text: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(PrimaryBlue.copy(alpha = 0.12f))
+            .border(1.dp, PrimaryBlue.copy(alpha = 0.28f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Icon(
+            Icons.Default.SportsScore,
+            contentDescription = null,
+            tint = Color(0xFF8EC5FF),
+            modifier = Modifier.size(18.dp)
+        )
+        Text(
+            text = text,
+            color = Color.White,
+            fontSize = 13.sp,
+            lineHeight = 18.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun CoachAdviceChip(
+    title: String,
+    text: String,
+    accent: Color,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(14.dp))
+            .background(Color.White.copy(alpha = 0.06f))
+            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .padding(horizontal = 10.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = title,
+            color = accent,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Black,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+        Text(
+            text = text,
+            color = AppTextSecondary,
+            fontSize = 11.sp,
+            lineHeight = 15.sp
         )
     }
 }
@@ -2424,8 +2676,60 @@ private fun NotificationsSidePanel(
 }
 
 @Composable
-private fun MissingRoutineScreen() {
-    LoaderOverlay()
+private fun MissingRoutineScreen(
+    loadFailed: Boolean,
+    onBackClick: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(AppBackground),
+        contentAlignment = Alignment.Center
+    ) {
+        Surface(
+            modifier = Modifier.padding(20.dp),
+            color = AppSurface,
+            shape = RoundedCornerShape(22.dp),
+            border = BorderStroke(1.dp, AppBorder),
+            tonalElevation = 6.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.CalendarMonth,
+                    contentDescription = null,
+                    tint = PrimaryBlue,
+                    modifier = Modifier.size(34.dp)
+                )
+                Text(
+                    text = "Rutina no disponible",
+                    color = Color.White,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text(
+                    text = if (loadFailed) {
+                        "No pudimos recuperar esta rutina. Vuelve al calendario e intenta abrirla nuevamente."
+                    } else {
+                        "La rutina no tiene un identificador válido."
+                    },
+                    color = AppTextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp
+                )
+                Button(
+                    onClick = onBackClick,
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Volver al calendario")
+                }
+            }
+        }
+    }
 }
 
 @Composable

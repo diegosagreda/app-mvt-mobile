@@ -4,6 +4,7 @@ import android.Manifest
 import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
@@ -124,7 +125,6 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.TemporalAdjusters
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
@@ -217,17 +217,9 @@ fun RoutinesScreen(
     }
     val visibleMonth = state.firstVisibleMonth.yearMonth
     val selectedRoutines = routinesByDate[selectedDate].orEmpty()
-    val weekDays = remember(selectedDate) {
-        val start = selectedDate.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        List(7) { start.plusDays(it.toLong()) }
-    }
-    val weekInsights = remember(weekDays, routinesByDate) {
-        weekDays.map { date -> buildDayPerformance(date, routinesByDate[date].orEmpty()) }
-    }
-    val weekMetrics = remember(weekInsights) { buildWeeklyMetrics(weekInsights) }
     LaunchedEffect(selectedDate, selectedRoutines.size, contentMode, scrollToSelectedRoutines) {
         if (scrollToSelectedRoutines && contentMode == RoutinesContentMode.CALENDAR && selectedRoutines.isNotEmpty()) {
-            listState.animateScrollToItem(index = 2)
+            listState.animateScrollToItem(index = 3)
             scrollToSelectedRoutines = false
         }
     }
@@ -242,6 +234,10 @@ fun RoutinesScreen(
     ) {
         when (contentMode) {
             RoutinesContentMode.CALENDAR -> {
+                item {
+                    PerformanceCalendarHeader()
+                }
+
                 item {
                     PerformanceCalendarCard(
                         state = state,
@@ -264,10 +260,7 @@ fun RoutinesScreen(
                     items(selectedRoutines) { routine ->
                         SelectedRoutineCard(routine) {
                             onRoutineClick()
-                            navController.currentBackStackEntry?.savedStateHandle?.set("routine_selected", routine)
-                            navController.currentBackStackEntry?.savedStateHandle?.set("ritmos", ritmos)
-                            navController.currentBackStackEntry?.savedStateHandle?.set("zonas", zonas)
-                            navController.navigate("routine_detail")
+                            navController.navigate("routine_detail/${Uri.encode(routine.id)}")
                         }
                     }
                 }
@@ -314,15 +307,7 @@ private fun SelectedRoutinesHeader(selectedDate: LocalDate) {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-private fun PerformanceCalendarHeader(
-    athleteName: String,
-    todayInsight: DayPerformance,
-    streakSummary: TrainingStreakSummary,
-    monthInsights: List<DayPerformance>
-) {
-    val todayTraining = remember(todayInsight) { buildTodayTrainingSummary(todayInsight) }
-    val objective = remember(todayInsight, monthInsights) { buildObjectiveSummary(todayInsight, monthInsights) }
-
+private fun PerformanceCalendarHeader() {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         color = AppSurface,
@@ -343,93 +328,40 @@ private fun PerformanceCalendarHeader(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    Text(
-                        text = "Buenos días, ${athleteName.ifBlank { "Atleta" }}",
-                        color = AppTextPrimary,
-                        fontSize = 22.sp,
-                        fontWeight = FontWeight.Black,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Text(
-                        text = if (todayInsight.routines.isEmpty()) {
-                            "Hoy toca recuperar con intención"
-                        } else {
-                            "Listo para tu entrenamiento de hoy"
-                        },
-                        color = AppTextSecondary,
-                        fontSize = 13.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                if (SHOW_TRAINING_STREAK_HEADER) {
-                    Surface(
-                        color = streakSummary.color.copy(alpha = 0.16f),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, streakSummary.color.copy(alpha = 0.42f))
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        Box(
+                            modifier = Modifier
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(PrimaryBlue.copy(alpha = 0.16f)),
+                            contentAlignment = Alignment.Center
                         ) {
                             Icon(
-                                imageVector = streakSummary.icon,
+                                imageVector = Icons.Default.CalendarMonth,
                                 contentDescription = null,
-                                tint = streakSummary.color,
-                                modifier = Modifier.size(18.dp)
+                                tint = Color(0xFF8EC5FF),
+                                modifier = Modifier.size(21.dp)
                             )
-                            Column(
-                                horizontalAlignment = Alignment.End,
-                                verticalArrangement = Arrangement.spacedBy(1.dp)
-                            ) {
-                                Text(
-                                    text = "${streakSummary.current} ent.",
-                                    color = streakSummary.color,
-                                    fontSize = 18.sp,
-                                    fontWeight = FontWeight.Black,
-                                    maxLines = 1
-                                )
-                                Text(
-                                    text = streakSummary.shortLabel,
-                                    color = AppTextSecondary,
-                                    fontSize = 9.sp,
-                                    maxLines = 1
-                                )
-                            }
                         }
+                        Text(
+                            text = "Tus rutinas",
+                            color = AppTextPrimary,
+                            fontSize = 22.sp,
+                            fontWeight = FontWeight.Black,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
+                    Text(
+                        text = "Planifica, revisa y ejecuta tus sesiones con una lectura clara de carga, objetivos y recuperación.",
+                        color = AppTextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp
+                    )
                 }
-            }
-
-            if (SHOW_TRAINING_STREAK_HEADER) {
-                StreakInsightStrip(summary = streakSummary)
-            }
-
-            WeatherLocationSummary()
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                SmartHeaderCard(
-                    label = "Hoy",
-                    value = todayTraining.title,
-                    detail = todayTraining.detail,
-                    icon = todayTraining.icon,
-                    accent = todayInsight.accent,
-                    modifier = Modifier.weight(1f)
-                )
-                SmartHeaderCard(
-                    label = "Objetivo",
-                    value = objective.title,
-                    detail = objective.detail,
-                    icon = Icons.Default.Flag,
-                    accent = PrimaryBlue,
-                    modifier = Modifier.weight(1f)
-                )
             }
         }
     }
