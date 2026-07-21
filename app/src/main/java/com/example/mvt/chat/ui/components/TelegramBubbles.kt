@@ -21,9 +21,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mvt.R
 import com.example.mvt.chat.data.model.ChatMessage
 import com.example.mvt.chat.data.model.UiMessage
 import com.example.mvt.ui.theme.AppBackground
@@ -253,7 +255,9 @@ fun TelegramMessageBubble(
     onReply: (ChatMessage) -> Unit,
     onEdit: (ChatMessage) -> Unit,
     onDelete: (ChatMessage) -> Unit,
-    onReact: (ChatMessage, String) -> Unit = { _, _ -> }
+    onReact: (ChatMessage, String) -> Unit = { _, _ -> },
+    myAvatarUrl: String = "",
+    otherAvatarUrl: String = ""
 ) {
     var menu by remember { mutableStateOf(false) }
     var expandedImageUrl by remember { mutableStateOf<String?>(null) }
@@ -274,18 +278,24 @@ fun TelegramMessageBubble(
     }
 
     val sidePadding =
-        if (isMine) PaddingValues(start = 64.dp, end = 12.dp)
-        else PaddingValues(start = 12.dp, end = 64.dp)
+        if (isMine) PaddingValues(start = 34.dp, end = 0.dp)
+        else PaddingValues(start = 0.dp, end = 34.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(sidePadding),
-        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start
+        horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom
     ) {
+        if (!isMine) {
+            ChatMessageAvatar(photoUrl = otherAvatarUrl, contentDescription = "Foto del entrenador")
+            Spacer(Modifier.width(8.dp))
+        }
+
         Box(
             modifier = Modifier
-                .widthIn(max = 320.dp)
+                .widthIn(max = 264.dp)
                 .padding(bottom = if (groupedReactions.isNotEmpty()) 18.dp else 0.dp)
                 .combinedClickable(
                     onClick = {},
@@ -418,6 +428,11 @@ fun TelegramMessageBubble(
                 }
             }
         }
+
+        if (isMine) {
+            Spacer(Modifier.width(8.dp))
+            ChatMessageAvatar(photoUrl = myAvatarUrl, contentDescription = "Foto del deportista")
+        }
     }
 
     if (expandedImageUrl != null) {
@@ -450,6 +465,37 @@ fun TelegramMessageBubble(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun ChatMessageAvatar(
+    photoUrl: String,
+    contentDescription: String
+) {
+    Surface(
+        shape = androidx.compose.foundation.shape.CircleShape,
+        color = AppSurfaceAlt,
+        border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder),
+        modifier = Modifier.size(30.dp)
+    ) {
+        if (photoUrl.isBlank()) {
+            Icon(
+                painter = painterResource(id = R.drawable.iconografia_02_svg),
+                contentDescription = contentDescription,
+                tint = AppTextSecondary,
+                modifier = Modifier.padding(6.dp)
+            )
+        } else {
+            AsyncImage(
+                model = photoUrl,
+                contentDescription = contentDescription,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clip(androidx.compose.foundation.shape.CircleShape)
+            )
         }
     }
 }
