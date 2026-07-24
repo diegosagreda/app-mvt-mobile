@@ -58,6 +58,8 @@ import com.example.mvt.goals.ui.GoalsScreen
 import com.example.mvt.goals.viewmodel.GoalsViewModel
 import com.example.mvt.availability.ui.AvailabilityScreen
 import com.example.mvt.availability.viewmodel.AvailabilityViewModel
+import com.example.mvt.billing.ui.BillingScreen
+import com.example.mvt.billing.viewmodel.BillingViewModel
 import com.example.mvt.health.ui.HealthScreen
 import com.example.mvt.health.viewmodel.HealthViewModel
 import com.example.mvt.sports.ui.SportsScreen
@@ -101,6 +103,7 @@ fun AthleteMainScreen(
     val sportsViewModel: SportsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val plansViewModel: PlansViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val subscriptionViewModel: SubscriptionViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val billingViewModel: BillingViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
     val realtimeViewModel: RealtimeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val morphologyViewModel: MorphologyViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -399,10 +402,14 @@ fun AthleteMainScreen(
                     }
                     composable("subscription") {
                         SubscriptionScreen(
-                            athleteId = currentAthleteId,
-                            viewModel = subscriptionViewModel,
-                            onBack = { innerNavController.popBackStack() }
+                            navController = innerNavController,
+                            viewModel = subscriptionViewModel
                         )
+                    }
+                    composable("billing") {
+                        BillingScreen(
+                            navController = innerNavController,
+                            viewModel = billingViewModel)
                     }
                     composable(
                         route = UnderConstructionDestination.routePattern,
