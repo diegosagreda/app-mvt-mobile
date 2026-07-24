@@ -50,23 +50,19 @@ class BillingRepository {
                 diasUsados    = 0
                 progreso      = 1f
             } else {
-                // Lógica basada en medianoches (12:00 AM)
                 val midnightInicio = getMidnight(fechaInicioMs)
                 val midnightAhora  = getMidnight(System.currentTimeMillis())
-                
-                // Días usados = cuántas medianoches han pasado desde el día de compra
+
                 val msEntreMidnights = midnightAhora - midnightInicio
                 val usados = (msEntreMidnights / (1000L * 60 * 60 * 24)).toInt().coerceIn(0, ciclo)
                 val restantes = ciclo - usados
 
-                // La fecha de corte es a las 12:00 AM del día siguiente al último día (día 31)
-                val msCorte = midnightInicio + ((ciclo + 1) * 24L * 60 * 60 * 1000)
+                val msCorte = midnightInicio + (ciclo * 24L * 60 * 60 * 1000)
 
                 fechaInicio   = formatMs(fechaInicioMs)
                 fechaCorte    = formatMs(msCorte)
                 diasUsados    = usados
                 diasRestantes = restantes
-                // Progreso basado en días completos para consistencia
                 progreso      = (usados.toFloat() / ciclo.toFloat()).coerceIn(0f, 1f)
             }
 

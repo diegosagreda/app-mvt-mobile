@@ -86,8 +86,8 @@ class SubscriptionViewModel : ViewModel() {
             val usados = (msEntreMidnights / (1000L * 60 * 60 * 24)).toInt().coerceIn(0, periodosDias)
             val restantes = periodosDias - usados
 
-            // La fecha de corte es a las 12:00 AM del día siguiente al último día (día 31)
-            val msCorte = midnightInicio + ((periodosDias + 1) * 24L * 60 * 60 * 1000)
+            // La fecha de corte es a las 12:00 AM del día 30 (exactamente 30 días después)
+            val msCorte = midnightInicio + (periodosDias * 24L * 60 * 60 * 1000)
 
             fechaCorte    = formatTimestamp(msCorte)
             diasRestantes = restantes
