@@ -36,7 +36,7 @@ data class Cobro(
     val recibo: String = "",
     val factura: String = "",
     val monto: Int = 0,
-    val actualizadoEn: Long = 0L    // para ordenar y calcular inicio
+    val actualizadoEn: Long = 0L
 )
 
 data class SubscriptionStatus(

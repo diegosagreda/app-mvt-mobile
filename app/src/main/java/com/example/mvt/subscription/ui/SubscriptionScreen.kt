@@ -158,12 +158,29 @@ private fun SubscriptionContent(
                 // ==========================================
                 // TARJETAS RESUMEN (Imagen 1)
                 // ==========================================
-                SummaryItemCard(
-                    icon = Icons.Default.WorkspacePremium,
-                    iconColor = Color(0xFF00A3FF),
-                    label = "Plan actual",
-                    value = status.userPlan.nombre.ifBlank { "—" }
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min), // Altura uniforme
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    SummaryItemCard(
+                        icon = Icons.Default.WorkspacePremium,
+                        iconColor = Color(0xFF00A3FF),
+                        label = "Plan actual",
+                        value = status.userPlan.nombre.ifBlank { "—" },
+                        modifier = Modifier.weight(1f).fillMaxHeight()
+                    )
+
+                    val diasTexto = if (status.diasRestantes == -1) "Sin vencimiento" else "${status.diasRestantes}"
+                    val diasSub   = if (status.esPlanGratuito) "No consume ciclo de vigencia" else "${status.diasTotales - maxOf(0, status.diasRestantes)} días usados"
+                    SummaryItemCard(
+                        icon = Icons.Default.Timer,
+                        iconColor = Color(0xFF81C784),
+                        label = "Días disponibles",
+                        value = diasTexto,
+                        subValue = diasSub,
+                        modifier = Modifier.weight(1.1f).fillMaxHeight() // Un poco más ancho para evitar cortes
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(12.dp))
 
@@ -175,18 +192,6 @@ private fun SubscriptionContent(
                     label = "Vigencia",
                     value = vigenciaTexto,
                     subValue = vigenciaSub
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                val diasTexto = if (status.diasRestantes == -1) "Sin vencimiento" else "${status.diasRestantes}"
-                val diasSub   = if (status.esPlanGratuito) "No consume ciclo de vigencia" else "${status.diasTotales - maxOf(0, status.diasRestantes)} días usados"
-                SummaryItemCard(
-                    icon = Icons.Default.Timer,
-                    iconColor = Color(0xFF81C784),
-                    label = "Días disponibles",
-                    value = diasTexto,
-                    subValue = diasSub
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -207,36 +212,35 @@ private fun SummaryItemCard(
     iconColor: Color,
     label: String,
     value: String,
-    subValue: String? = null
+    subValue: String? = null,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = AppSurface,
         border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder),
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 94.dp) // Altura mínima para que las 3 sean iguales
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 14.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
-                    .background(iconColor.copy(alpha = 0.15f), CircleShape),
+                    .size(40.dp)
+                    .background(iconColor.copy(alpha = 0.12f), CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = iconColor,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(10.dp))
             Column(verticalArrangement = Arrangement.Center) {
-                Text(text = label, fontSize = 13.sp, color = AppTextSecondary)
+                Text(text = label, fontSize = 13.sp, color = AppTextSecondary, maxLines = 1)
                 Text(
                     text = value,
                     fontSize = 17.sp,
@@ -244,7 +248,13 @@ private fun SummaryItemCard(
                     color = AppTextPrimary
                 )
                 if (subValue != null) {
-                    Text(text = subValue, fontSize = 12.sp, color = AppTextSecondary)
+                    Text(
+                        text = subValue,
+                        fontSize = 12.sp,
+                        color = AppTextSecondary,
+                        lineHeight = 16.sp,
+                        maxLines = 2
+                    )
                 }
             }
         }
@@ -266,49 +276,86 @@ private fun PlanVigenciaCard(status: SubscriptionStatus) {
         modifier = Modifier.fillMaxWidth()
     ) {
         Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text       = "Vigencia del plan",
-                fontSize   = 17.sp,
-                fontWeight = FontWeight.Bold,
-                color      = AppTextPrimary
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text       = "Vigencia del plan",
+                    fontSize   = 17.sp,
+                    fontWeight = FontWeight.Bold,
+                    color      = AppTextPrimary,
+                    modifier   = Modifier.weight(1f)
+                )
+                
+                Surface(
+                    shape = CircleShape,
+                    color = if (status.esPlanGratuito) AppSurfaceMuted else AppSuccess.copy(alpha = 0.12f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (status.esPlanGratuito) Color(0xFF00A3FF).copy(alpha = 0.4f) else AppSuccess.copy(alpha = 0.4f)
+                    ),
+                ) {
+                    Text(
+                        text     = if (status.esPlanGratuito) "Plan gratuito" else "Activa",
+                        fontSize = 11.sp,
+                        color    = if (status.esPlanGratuito) Color(0xFF00A3FF) else AppSuccess,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 5.dp)
+                    )
+                }
+            }
+
             Text(
                 text     = "Resumen operativo de la suscripción activa del deportista.",
                 fontSize = 13.sp,
-                color    = AppTextSecondary
+                color    = AppTextSecondary,
+                modifier = Modifier.padding(top = 2.dp)
             )
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            Surface(
-                shape = CircleShape,
-                color = if (status.esPlanGratuito) AppSurfaceMuted else AppSuccess.copy(alpha = 0.12f),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (status.esPlanGratuito) Color(0xFF00A3FF).copy(alpha = 0.4f) else AppSuccess.copy(alpha = 0.4f)
-                )
-            ) {
-                Text(
-                    text     = if (status.esPlanGratuito) "Plan gratuito" else "Activa",
-                    fontSize = 11.sp,
-                    color    = if (status.esPlanGratuito) Color(0xFF00A3FF) else AppSuccess,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
-                )
-            }
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            VigenciaDetailRow(label = "Plan",            value = status.userPlan.nombre.ifBlank { "—" })
+            Row(modifier = Modifier.fillMaxWidth()) {
+                VigenciaDetailRow(
+                    label = "Plan",
+                    value = status.userPlan.nombre.ifBlank { "—" },
+                    modifier = Modifier.weight(1f)
+                )
+                VigenciaDetailRow(
+                    label = "Disponibilidad",
+                    value = if (status.diasRestantes == -1) "Ilimitada" else "${status.diasRestantes} días restantes",
+                    modifier = Modifier.weight(1.2f)
+                )
+            }
+            
             HorizontalDivider(color = AppBorder.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
-            VigenciaDetailRow(label = "Inicio",           value = status.fechaInicio)
-            HorizontalDivider(color = AppBorder.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
-            VigenciaDetailRow(label = "Fecha de corte",   value = if (status.esPlanGratuito) "No aplica" else status.fechaCorte)
-            HorizontalDivider(color = AppBorder.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
-            VigenciaDetailRow(
-                label = "Disponibilidad",
-                value = if (status.diasRestantes == -1) "Ilimitada" else "${status.diasRestantes} días restantes"
-            )
+
+            Row(modifier = Modifier.fillMaxWidth()) {
+                // Formateo de fecha con salto de línea para optimizar espacio
+                val inicioSplit = status.fechaInicio.split(" ")
+                val inicioDisplay = if (inicioSplit.size >= 5) {
+                    "${inicioSplit[0]} ${inicioSplit[1]} ${inicioSplit[2]}\n${inicioSplit[3]} ${inicioSplit[4]}"
+                } else status.fechaInicio
+
+                VigenciaDetailRow(
+                    label = "Inicio",
+                    value = inicioDisplay,
+                    modifier = Modifier.weight(1f)
+                )
+
+                val corteValue = if (status.esPlanGratuito) "No aplica" else status.fechaCorte
+                val corteSplit = corteValue.split(" ")
+                val corteDisplay = if (corteSplit.size >= 5) {
+                    "${corteSplit[0]} ${corteSplit[1]} ${corteSplit[2]}\n${corteSplit[3]} ${corteSplit[4]}"
+                } else corteValue
+
+                VigenciaDetailRow(
+                    label = "Fecha de corte",
+                    value = corteDisplay,
+                    modifier = Modifier.weight(1.2f)
+                )
+            }
 
             Spacer(modifier = Modifier.height(24.dp))
 
@@ -354,8 +401,12 @@ private fun PlanVigenciaCard(status: SubscriptionStatus) {
 }
 
 @Composable
-private fun VigenciaDetailRow(label: String, value: String) {
-    Column {
+private fun VigenciaDetailRow(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
         Text(text = label, fontSize = 13.sp, color = AppTextSecondary)
         Text(
             text       = value,

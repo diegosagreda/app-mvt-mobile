@@ -16,6 +16,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusModifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -45,7 +46,7 @@ private fun formatDateTime(dateTime: String): String {
     return try {
         val parser = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.US)
         val date = parser.parse(dateTime) ?: return dateTime
-        val formatter = SimpleDateFormat("d 'de' MMM 'de' yyyy, h:mm a", Locale("es", "CO"))
+        val formatter = SimpleDateFormat("d 'de' MMMM 'de' yyyy, h:mm a", Locale("es", "CO"))
         formatter.format(date)
             .replace("AM", "a. m.")
             .replace("PM", "p. m.")
@@ -176,6 +177,7 @@ private fun BillingContent(
                 else status.fechaCorte
                 val fechaSubtexto = if (status.esPlanGratuito) "Sin vencimiento"
                 else "${status.diasRestantes} días disponibles"
+                
                 BillingSummaryCard(
                     icon      = Icons.Default.CalendarMonth,
                     iconColor = Color(0xFFFF8A65),
@@ -186,23 +188,28 @@ private fun BillingContent(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                BillingSummaryCard(
-                    icon      = Icons.Default.CreditCard,
-                    iconColor = Color(0xFF4DB6AC),
-                    label     = "Total pagado",
-                    value     = formatCOP(status.totalPagado),
-                    subValue  = "${status.totalPagos} pagos registrados"
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    BillingSummaryCard(
+                        icon      = Icons.Default.CreditCard,
+                        iconColor = Color(0xFF4DB6AC),
+                        label     = "Total pagado",
+                        value     = formatCOP(status.totalPagado),
+                        subValue  = "${status.totalPagos} pagos registrados",
+                        modifier  = Modifier.weight(1f).fillMaxHeight()
+                    )
 
-                Spacer(modifier = Modifier.height(10.dp))
-
-                BillingSummaryCard(
-                    icon      = Icons.Default.Discount,
-                    iconColor = Color(0xFFAB47BC),
-                    label     = "Descuentos",
-                    value     = formatCOP(status.totalDescuentos),
-                    subValue  = "${status.pagosConDescuento} pagos con código"
-                )
+                    BillingSummaryCard(
+                        icon      = Icons.Default.Discount,
+                        iconColor = Color(0xFFAB47BC),
+                        label     = "Descuentos",
+                        value     = formatCOP(status.totalDescuentos),
+                        subValue  = "${status.pagosConDescuento} pagos con código",
+                        modifier  = Modifier.weight(1f).fillMaxHeight()
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -240,71 +247,57 @@ private fun BillingHeroCard(status: BillingStatus) {
         border   = androidx.compose.foundation.BorderStroke(1.dp, AppBorder),
         modifier = Modifier.fillMaxWidth()
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
-            Text(
-                text     = "CENTRO DE FACTURACIÓN",
-                fontSize = 11.sp,
-                color    = PrimaryBlue,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 1.sp
-            )
-            Spacer(modifier = Modifier.height(6.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text     = "CENTRO DE FACTURACIÓN",
+                    fontSize = 14.sp,
+                    color    = PrimaryBlue,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.sp,
+                    modifier = Modifier.weight(1f)
+                )
+
+                // Badge estado
+                Surface(
+                    shape = CircleShape,
+                    color = if (status.esPlanGratuito) AppSurfaceMuted else AppSuccess.copy(alpha = 0.15f),
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (status.esPlanGratuito) Color(0xFF00A3FF).copy(alpha = 0.4f) else AppSuccess.copy(alpha = 0.4f)
+                    ),
+                    modifier = Modifier.padding(vertical = 4.dp)
+
+                ) {
+                    Text(
+                        text       = if (status.esPlanGratuito) "Plan gratuito" else if (status.diasRestantes != 0) "Activa" else "Vencida",
+                        fontSize   = 11.sp,
+                        color      = if (status.esPlanGratuito) Color(0xFF00A3FF) else if (status.diasRestantes != 0) AppSuccess else AppError,
+                        fontWeight = FontWeight.Bold,
+                        modifier   = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
+                    )
+                }
+            }
+            
+            Spacer(modifier = Modifier.height(4.dp)) // Espaciado más corto
             Text(
                 text       = "Controla tus pagos y la vigencia de tu plan",
-                fontSize   = 20.sp,
+                fontSize   = 19.sp, // Un poco más pequeña para mejor balance
                 fontWeight = FontWeight.Bold,
                 color      = AppTextPrimary,
-                lineHeight = 26.sp
+                lineHeight = 24.sp
             )
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(6.dp)) // Espaciado más corto
             Text(
                 text     = "Consulta tu plan activo, pagos realizados, códigos de descuento aplicados y fecha de corte dentro de My Virtual Trainer.",
                 fontSize = 13.sp,
                 color    = AppTextSecondary,
-                lineHeight = 19.sp
+                lineHeight = 18.sp
             )
-            Spacer(modifier = Modifier.height(14.dp))
-
-            // Badge estado
-            Surface(
-                shape = CircleShape,
-                color = if (status.esPlanGratuito) AppSurfaceMuted else AppSuccess.copy(alpha = 0.15f),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (status.esPlanGratuito) Color(0xFF00A3FF).copy(alpha = 0.4f) else AppSuccess.copy(alpha = 0.4f)
-                )
-            ) {
-                Text(
-                    text       = if (status.esPlanGratuito) "Plan gratuito" else if (status.diasRestantes != 0) "Activa" else "Vencida",
-                    fontSize   = 11.sp,
-                    color      = if (status.esPlanGratuito) Color(0xFF00A3FF) else if (status.diasRestantes != 0) AppSuccess else AppError,
-                    fontWeight = FontWeight.Bold,
-                    modifier   = Modifier.padding(horizontal = 14.dp, vertical = 5.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Íconos de proceso: plan → pago → calendario (Estilo Web)
-            Row(
-                modifier              = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.Center,
-                verticalAlignment     = Alignment.CenterVertically
-            ) {
-                BillingStepIcon(icon = Icons.Default.CardMembership, tint = PrimaryBlue)
-                HorizontalDivider(
-                    modifier  = Modifier.weight(1f).padding(horizontal = 8.dp),
-                    color     = PrimaryBlue.copy(alpha = 0.3f),
-                    thickness = 1.dp
-                )
-                BillingStepIcon(icon = Icons.Default.CreditCard, tint = Color(0xFF00A3FF))
-                HorizontalDivider(
-                    modifier  = Modifier.weight(1f).padding(horizontal = 8.dp),
-                    color     = PrimaryBlue.copy(alpha = 0.3f),
-                    thickness = 1.dp
-                )
-                BillingStepIcon(icon = Icons.Default.CalendarMonth, tint = Color(0xFFFF8A65))
-            }
         }
     }
 }
@@ -335,16 +328,17 @@ private fun BillingSummaryCard(
     iconColor: Color,
     label: String,
     value: String,
-    subValue: String? = null
+    subValue: String? = null,
+    modifier: Modifier = Modifier
 ) {
     Surface(
         shape    = RoundedCornerShape(14.dp),
         color    = AppSurface,
         border   = androidx.compose.foundation.BorderStroke(1.dp, AppBorder),
-        modifier = Modifier.fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
         Row(
-            modifier          = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+            modifier          = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
@@ -355,12 +349,12 @@ private fun BillingSummaryCard(
             ) {
                 Icon(icon, null, tint = iconColor, modifier = Modifier.size(22.dp))
             }
-            Spacer(modifier = Modifier.width(14.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column {
-                Text(text = label, fontSize = 12.sp, color = AppTextSecondary)
+                Text(text = label, fontSize = 12.sp, color = AppTextSecondary, maxLines = 1)
                 Text(text = value, fontSize = 17.sp, fontWeight = FontWeight.Bold, color = AppTextPrimary)
                 if (subValue != null) {
-                    Text(text = subValue, fontSize = 12.sp, color = AppTextSecondary)
+                    Text(text = subValue, fontSize = 12.sp, color = AppTextSecondary, lineHeight = 14.sp, maxLines = 2)
                 }
             }
         }
@@ -419,11 +413,14 @@ private fun BillingVigenciaCard(status: BillingStatus) {
                     Spacer(modifier = Modifier.height(18.dp))
                     // Filas de detalle
                     BillingDetailRow(label = "Inicio", value = status.fechaInicio)
+                    
                     HorizontalDivider(color = AppBorder.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
+                    
                     BillingDetailRow(
                         label = "Corte",
                         value = if (status.esPlanGratuito) "No aplica" else status.fechaCorte
                     )
+                    
                     HorizontalDivider(color = AppBorder.copy(alpha = 0.5f), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 10.dp))
                     
                     val medioPagoStr = if (status.ultimoPago != null) {
@@ -484,15 +481,18 @@ private fun BillingVigenciaCard(status: BillingStatus) {
 private fun BillingDetailRow(
     label: String,
     value: String,
-    valueColor: Color = AppTextPrimary
+    valueColor: Color = AppTextPrimary,
+    modifier: Modifier = Modifier
 ) {
     Row(
-        modifier              = Modifier.fillMaxWidth(),
+        modifier              = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment     = Alignment.CenterVertically
     ) {
-        Text(text = label, fontSize = 13.sp, color = AppTextSecondary, modifier = Modifier.weight(1f))
-        Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
+        Column {
+            Text(text = label, fontSize = 13.sp, color = AppTextSecondary)
+            Text(text = value, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = valueColor)
+        }
     }
 }
 

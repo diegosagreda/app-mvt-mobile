@@ -77,17 +77,23 @@ class SubscriptionViewModel : ViewModel() {
             diasTotales   = 0
             progreso      = 1f
         } else {
-            val msCorte    = fechaInicioMs + (periodosDias * 24L * 60 * 60 * 1000)
-            val msAhora    = System.currentTimeMillis()
-            val msPasados  = msAhora - fechaInicioMs
+            // Lógica basada en medianoches (12:00 AM)
+            val midnightInicio = getMidnight(fechaInicioMs)
+            val midnightAhora  = getMidnight(System.currentTimeMillis())
             
-            val usados     = (msPasados / (1000L * 60 * 60 * 24)).toInt().coerceIn(0, periodosDias)
-            val restantes  = periodosDias - usados
+            // Días usados = cuántas medianoches han pasado desde el día de compra
+            val msEntreMidnights = midnightAhora - midnightInicio
+            val usados = (msEntreMidnights / (1000L * 60 * 60 * 24)).toInt().coerceIn(0, periodosDias)
+            val restantes = periodosDias - usados
+
+            // La fecha de corte es a las 12:00 AM del día siguiente al último día (día 31)
+            val msCorte = midnightInicio + ((periodosDias + 1) * 24L * 60 * 60 * 1000)
 
             fechaCorte    = formatTimestamp(msCorte)
             diasRestantes = restantes
             diasTotales   = periodosDias
-            progreso      = (msPasados.toFloat() / (periodosDias * 24L * 60 * 60 * 1000).toFloat()).coerceIn(0f, 1f)
+            // Progreso basado en días completos para consistencia con los contadores
+            progreso      = (usados.toFloat() / periodosDias.toFloat()).coerceIn(0f, 1f)
         }
 
         return SubscriptionStatus(
@@ -103,9 +109,19 @@ class SubscriptionViewModel : ViewModel() {
         )
     }
 
+    private fun getMidnight(timestamp: Long): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.timeInMillis = timestamp
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
+    }
+
     private fun formatTimestamp(timestamp: Long): String {
         return try {
-            val sdf = SimpleDateFormat("d 'de' MMM 'de' yyyy", Locale("es", "CO"))
+            val sdf = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es", "CO"))
             sdf.format(Date(timestamp))
         } catch (e: Exception) { "—" }
     }

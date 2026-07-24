@@ -50,18 +50,24 @@ class BillingRepository {
                 diasUsados    = 0
                 progreso      = 1f
             } else {
-                val msCorte    = fechaInicioMs + (ciclo * 24L * 60 * 60 * 1000)
-                val msAhora    = System.currentTimeMillis()
-                val msPasados  = msAhora - fechaInicioMs
+                // Lógica basada en medianoches (12:00 AM)
+                val midnightInicio = getMidnight(fechaInicioMs)
+                val midnightAhora  = getMidnight(System.currentTimeMillis())
                 
-                val usados     = (msPasados / (1000L * 60 * 60 * 24)).toInt().coerceIn(0, ciclo)
-                val restantes  = ciclo - usados
+                // Días usados = cuántas medianoches han pasado desde el día de compra
+                val msEntreMidnights = midnightAhora - midnightInicio
+                val usados = (msEntreMidnights / (1000L * 60 * 60 * 24)).toInt().coerceIn(0, ciclo)
+                val restantes = ciclo - usados
+
+                // La fecha de corte es a las 12:00 AM del día siguiente al último día (día 31)
+                val msCorte = midnightInicio + ((ciclo + 1) * 24L * 60 * 60 * 1000)
 
                 fechaInicio   = formatMs(fechaInicioMs)
                 fechaCorte    = formatMs(msCorte)
                 diasUsados    = usados
                 diasRestantes = restantes
-                progreso      = (msPasados.toFloat() / (ciclo * 24L * 60 * 60 * 1000).toFloat()).coerceIn(0f, 1f)
+                // Progreso basado en días completos para consistencia
+                progreso      = (usados.toFloat() / ciclo.toFloat()).coerceIn(0f, 1f)
             }
 
             val totalPagado       = pagosOrdenados.sumOf { it.monto }
@@ -143,8 +149,18 @@ class BillingRepository {
 
     private fun formatMs(ms: Long): String {
         return try {
-            val sdf = SimpleDateFormat("d 'de' MMM 'de' yyyy", Locale("es", "CO"))
+            val sdf = SimpleDateFormat("d 'de' MMMM 'de' yyyy", Locale("es", "CO"))
             sdf.format(Date(ms))
         } catch (e: Exception) { "—" }
+    }
+
+    private fun getMidnight(timestamp: Long): Long {
+        val cal = java.util.Calendar.getInstance()
+        cal.timeInMillis = timestamp
+        cal.set(java.util.Calendar.HOUR_OF_DAY, 0)
+        cal.set(java.util.Calendar.MINUTE, 0)
+        cal.set(java.util.Calendar.SECOND, 0)
+        cal.set(java.util.Calendar.MILLISECOND, 0)
+        return cal.timeInMillis
     }
 }
