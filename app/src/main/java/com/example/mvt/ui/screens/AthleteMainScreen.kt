@@ -123,6 +123,8 @@ import com.example.mvt.plans.ui.PlansScreen
 import com.example.mvt.plans.viewmodel.PlansViewModel
 import com.example.mvt.subscription.ui.SubscriptionScreen
 import com.example.mvt.subscription.viewmodel.SubscriptionViewModel
+import com.example.mvt.billing.ui.BillingScreen
+import com.example.mvt.billing.viewmodel.BillingViewModel
 import com.example.mvt.ui.viewmodels.MorphologyViewModel
 import com.example.mvt.ui.viewmodels.NotificationsViewModel
 import com.example.mvt.ui.viewmodels.PhysicalCapacityViewModel
@@ -167,6 +169,7 @@ fun AthleteMainScreen(
     val sportsViewModel: SportsViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val plansViewModel: PlansViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val subscriptionViewModel: SubscriptionViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val billingViewModel: BillingViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
     val realtimeViewModel: RealtimeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val morphologyViewModel: MorphologyViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -548,9 +551,14 @@ fun AthleteMainScreen(
                     }
                     composable("subscription") {
                         SubscriptionScreen(
-                            athleteId = currentAthleteId,
-                            viewModel = subscriptionViewModel,
-                            onBack = { innerNavController.navigateToPlanHub() }
+                            navController = innerNavController,
+                            viewModel = subscriptionViewModel
+                        )
+                    }
+                    composable("billing") {
+                        BillingScreen(
+                            navController = innerNavController,
+                            viewModel = billingViewModel
                         )
                     }
                     composable(
@@ -773,7 +781,7 @@ private val planHubOptions = listOf(
     PlanHubOption(
         title = "Facturación",
         subtitle = "Pagos y comprobantes",
-        route = UnderConstructionDestination.routeFor("billing"),
+        route = "billing",
         icon = Icons.Default.ReceiptLong,
         accent = Color(0xFFFFC857)
     ),
