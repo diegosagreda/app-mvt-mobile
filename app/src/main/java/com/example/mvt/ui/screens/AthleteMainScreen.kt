@@ -125,6 +125,8 @@ import com.example.mvt.subscription.ui.SubscriptionScreen
 import com.example.mvt.subscription.viewmodel.SubscriptionViewModel
 import com.example.mvt.billing.ui.BillingScreen
 import com.example.mvt.billing.viewmodel.BillingViewModel
+import com.example.mvt.ui.screens.personaldata.PerformanceScreen
+import com.example.mvt.ui.viewmodels.PerformanceViewModel
 import com.example.mvt.ui.viewmodels.MorphologyViewModel
 import com.example.mvt.ui.viewmodels.NotificationsViewModel
 import com.example.mvt.ui.viewmodels.PhysicalCapacityViewModel
@@ -170,6 +172,7 @@ fun AthleteMainScreen(
     val plansViewModel: PlansViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val subscriptionViewModel: SubscriptionViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val billingViewModel: BillingViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    val performanceViewModel: PerformanceViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
 
     val realtimeViewModel: RealtimeViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
     val morphologyViewModel: MorphologyViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
@@ -559,6 +562,12 @@ fun AthleteMainScreen(
                         BillingScreen(
                             navController = innerNavController,
                             viewModel = billingViewModel
+                        )
+                    }
+                    composable("performance") {
+                        PerformanceScreen(
+                            navController = innerNavController,
+                            viewModel = performanceViewModel
                         )
                     }
                     composable(
@@ -1100,7 +1109,7 @@ private val personalDataOptions = listOf(
     PersonalDataOption(
         title = "Rendimiento",
         subtitle = "Evolucion deportiva",
-        route = UnderConstructionDestination.routeFor("performance"),
+        route = "performance",
         icon = Icons.Default.Timer,
         accent = Color(0xFFFF8A65)
     ),
