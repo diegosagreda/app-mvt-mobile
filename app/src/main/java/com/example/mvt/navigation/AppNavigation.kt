@@ -9,7 +9,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.*
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
@@ -38,8 +37,7 @@ import com.example.mvt.utils.StravaAuthRedirectBus
 // ===== CHAT =====
 import com.example.mvt.chat.data.model.ChatMessage
 import com.example.mvt.chat.data.repo.ChatRepository
-import com.example.mvt.chat.ui.screen.ChatConversationContent
-import com.example.mvt.chat.ui.screen.ChatPopup
+import com.example.mvt.chat.ui.screen.ChatScreen
 
 // ===== TRAINER (RTDB) =====
 import com.example.mvt.chat.data.repo.TrainerRealtimeRepository
@@ -77,10 +75,9 @@ fun AppNavigation() {
     val storage = remember { FirebaseStorage.getInstance() }
     val chatRepo = remember(db, storage) { ChatRepository(db, storage) }
 
-    // ====== ESTADO GLOBAL DEL CHAT (overlay) ======
-    var showChat by rememberSaveable { mutableStateOf(false) }
-    var unreadMessagesCount by rememberSaveable { mutableStateOf(0) }
-    var lastNotifiedIncomingMessageId by rememberSaveable { mutableStateOf("") }
+    // ====== ESTADO GLOBAL DEL CHAT ======
+    var unreadMessagesCount by remember { mutableStateOf(0) }
+    var lastNotifiedIncomingMessageId by remember { mutableStateOf("") }
 
     // ====== ID DEPORTISTA (UID) ======
     val athleteId = currentUser?.uid.orEmpty()
@@ -90,12 +87,13 @@ fun AppNavigation() {
     val trainerBubbleVm = remember { TrainerBubbleViewModel(trainerRepo) }
     val trainer by trainerBubbleVm.trainer.collectAsState()
     val trainerId by trainerBubbleVm.trainerId.collectAsState()
+    val athleteUser by userViewModel.user.collectAsState()
     val appInForeground by AppForegroundMonitor.isForeground.collectAsState()
 
     // ====== RUTA ACTUAL ======
     val backStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = backStackEntry?.destination?.route
-    val currentShowChat by rememberUpdatedState(showChat)
+    val currentChatIsOpen by rememberUpdatedState(currentRoute == "athleteChat")
     val currentAppInForeground by rememberUpdatedState(appInForeground)
     val currentTrainerName by rememberUpdatedState(
         listOf(trainer.nombres, trainer.apellidos)
@@ -117,12 +115,9 @@ fun AppNavigation() {
 
     LaunchedEffect(athleteId) {
         if (athleteId.isNotBlank()) {
+            userViewModel.loadUserInfo()
             trainerBubbleVm.start(athleteId)
         }
-    }
-
-    LaunchedEffect(currentRoute) {
-        if (currentRoute != "athleteMain") showChat = false
     }
 
     LaunchedEffect(pendingStravaRedirect, currentRoute) {
@@ -141,13 +136,12 @@ fun AppNavigation() {
             return@LaunchedEffect
         }
 
-        if (currentRoute != "athleteMain") {
-            navController.navigate("athleteMain") {
+        if (currentRoute != "athleteChat") {
+            navController.navigate("athleteChat") {
                 launchSingleTop = true
             }
         }
-        showChat = true
-        Log.d(tag, "showChat set true from notification")
+        Log.d(tag, "athleteChat opened from notification")
         ChatNotificationBus.clear()
     }
 
@@ -171,7 +165,7 @@ fun AppNavigation() {
                 if (latestIncoming.id == lastNotifiedIncomingMessageId) return@listenAthleteChatAlerts
                 lastNotifiedIncomingMessageId = latestIncoming.id
 
-                if (currentAppInForeground && !currentShowChat) {
+                if (currentAppInForeground && !currentChatIsOpen) {
                     NotificationHelper.showNewChatMessageNotification(
                         context = context,
                         trainerName = currentTrainerName,
@@ -245,27 +239,29 @@ fun AppNavigation() {
                     userViewModel = userViewModel,
                     onOpenChat = {
                         Log.d(tag, "onOpenChat clicked athleteId=$athleteId trainerId=$trainerId currentRoute=$currentRoute")
-                        showChat = true
+                        navController.navigate("athleteChat") {
+                            launchSingleTop = true
+                        }
                     },
-                    unreadMessagesCount = if (showChat) 0 else unreadMessagesCount
+                    unreadMessagesCount = if (currentRoute == "athleteChat") 0 else unreadMessagesCount
                 )
             }
-        }
 
-        // ====== CHAT SOLO POST-LOGIN ======
-        if (currentRoute == "athleteMain" && athleteId.isNotBlank()) {
-            ChatPopup(
-                show = showChat,
-                onDismiss = { showChat = false },
-                title = "Chat",
-                uid = athleteId,
-                otherUid = trainerId,
-                role = "deportista",
-                conversationId = null,
-                db = db,
-                storage = storage
-            ) { vm, state ->
-                ChatConversationContent(vm = vm, state = state)
+            composable("athleteChat") {
+                ChatScreen(
+                    uid = athleteId,
+                    athleteName = listOfNotNull(athleteUser?.nombres, athleteUser?.apellidos)
+                        .filter { it.isNotBlank() }
+                        .joinToString(" ")
+                        .ifBlank { "Atleta" },
+                    athletePhotoUrl = athleteUser?.foto_url.orEmpty(),
+                    trainerId = trainerId,
+                    trainerName = currentTrainerName,
+                    trainerPhotoUrl = trainer.foto_url,
+                    onBack = { navController.popBackStack() },
+                    db = db,
+                    storage = storage
+                )
             }
         }
     }

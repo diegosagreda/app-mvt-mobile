@@ -46,7 +46,9 @@ private val composerEmojis = listOf("💪", "🔥", "👏", "🎯", "👍", "❤
 @Composable
 fun ChatConversationContent(
     vm: ChatViewModel,
-    state: ChatUiState
+    state: ChatUiState,
+    myAvatarUrl: String = "",
+    otherAvatarUrl: String = ""
 ) {
     val listState = rememberLazyListState()
 
@@ -85,7 +87,9 @@ fun ChatConversationContent(
                     onReply = { vm.setReply(it) },
                     onEdit = { vm.setEdit(it) },
                     onDelete = { vm.deleteMessage(it.id) },
-                    onReact = { message, emoji -> vm.toggleReaction(message.id, emoji) }
+                    onReact = { message, emoji -> vm.toggleReaction(message.id, emoji) },
+                    myAvatarUrl = myAvatarUrl,
+                    otherAvatarUrl = otherAvatarUrl
                 )
             }
         }

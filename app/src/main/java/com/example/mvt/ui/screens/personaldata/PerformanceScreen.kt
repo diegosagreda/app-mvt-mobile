@@ -13,6 +13,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
@@ -597,28 +598,24 @@ private fun PerformanceHeroHeader(
             .padding(start = 8.dp, end = 16.dp, top = 16.dp, bottom = 20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = {
-                    navController.navigate("routines") {
-                        popUpTo("routines") { inclusive = false }
-                        launchSingleTop = true
-                    }
-                }
+            Surface(
+                shape  = CircleShape,
+                color  = AppSurfaceAlt,
+                border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder)
             ) {
-                Surface(
-                    shape  = CircleShape,
-                    color  = AppSurfaceAlt,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder)
-                ) {
+                IconButton(
+                    onClick = { navController.popBackStack() },
+                    modifier = Modifier.size(50.dp)
+                    ) {
                     Icon(
-                        imageVector        = Icons.Default.ArrowBack,
+                        imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
                         contentDescription = "Volver",
                         tint               = AppTextPrimary,
-                        modifier           = Modifier.padding(8.dp).size(20.dp)
+                        modifier           = Modifier.size(24.dp)
                     )
                 }
             }
-            Spacer(modifier = Modifier.width(4.dp))
+            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text       = "Información Rendimiento",

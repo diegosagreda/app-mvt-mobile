@@ -20,6 +20,7 @@ android {
         buildConfigField "String", "STRAVA_CLIENT_ID", "\"246034\""
         buildConfigField "String", "STRAVA_REDIRECT_URI", "\"mvt://app.myvirtualtrainer.co/deportista/conexiones/strava\""
         buildConfigField "String", "STRAVA_FUNCTIONS_BASE_URL", "\"https://us-central1-my-virtual-trainer-af778.cloudfunctions.net\""
+        resourceConfigurations += ['es']
         vectorDrawables {
             useSupportLibrary true
         }
@@ -27,7 +28,8 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled true
+            shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
@@ -97,12 +99,6 @@ dependencies {
     implementation "androidx.media3:media3-exoplayer:1.3.1"
     implementation "androidx.media3:media3-ui:1.3.1"
 
-    // === GRAFICOS ===
-    implementation "com.github.PhilJay:MPAndroidChart:v3.1.0"
-
-    // === ANIMACIONES ===
-    implementation "com.airbnb.android:lottie-compose:6.0.1"
-
     // === WORKER / NOTIFICACIONES ===
     implementation "androidx.work:work-runtime-ktx:2.9.0"
 
@@ -111,7 +107,6 @@ dependencies {
     implementation "androidx.credentials:credentials-play-services-auth:1.2.0"
     //implementation 'com.google.firebase:firebase-storage-ktx:22.0.1'
     implementation 'com.google.firebase:firebase-storage-ktx'
-    implementation 'androidx.tv:tv-material:1.0.1'
 
     // === TESTING ===
     testImplementation 'junit:junit:4.13.2'
@@ -121,9 +116,6 @@ dependencies {
     androidTestImplementation 'androidx.compose.ui:ui-test-junit4'
     debugImplementation 'androidx.compose.ui:ui-tooling'
     debugImplementation 'androidx.compose.ui:ui-test-manifest'
-
-    // === COIL ===
-    implementation("io.coil-kt:coil-compose:2.5.0")
 }
 
 configurations.all {

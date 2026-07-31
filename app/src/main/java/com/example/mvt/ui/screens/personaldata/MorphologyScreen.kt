@@ -304,8 +304,8 @@ fun MorphologyScreen(
             ) {
                 MorphologyTopBar(
                     onBack = {
-                        navController.navigate("routines") {
-                            popUpTo("routines") { inclusive = false }
+                        navController.navigate("profile") {
+                            popUpTo("profile") { inclusive = false }
                             launchSingleTop = true
                         }
                     }

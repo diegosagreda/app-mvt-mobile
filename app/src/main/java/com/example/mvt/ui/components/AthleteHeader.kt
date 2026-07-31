@@ -1,24 +1,22 @@
 package com.example.mvt.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.Email
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -32,10 +30,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.mvt.R
 import com.example.mvt.ui.theme.AppBackground
@@ -43,163 +39,83 @@ import com.example.mvt.ui.theme.AppBorder
 import com.example.mvt.ui.theme.AppSuccess
 import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.AppTextSecondary
-import com.example.mvt.ui.theme.PrimaryBlue
-import java.util.Calendar
 
 private val HeaderBadgeRed = Color(0xFFE64848)
 private val HeaderBadgePulseRed = Color(0xFFE64848)
+private val HeaderActionSize = 34.dp
+private val HeaderActionSpacing = 8.dp
+private val HeaderMainIconSize = 26.4.dp
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun AthleteHeader(
-    saludo: String,
-    userName: String,
-    onMenuClick: () -> Unit,
     onMessageClick: () -> Unit,
     onNotificationClick: () -> Unit,
-    onLogoutClick: () -> Unit,
+    onProfileClick: () -> Unit,
     profilePhotoUrl: String? = null,
     isStravaConnected: Boolean = false,
     unreadMessagesCount: Int = 0,
     unreadNotificationsCount: Int = 0
 ) {
-    var showLogoutDialog by remember { mutableStateOf(false) }
-
-    // Determinar hora actual y seleccionar ícono
-    val currentHour = remember { Calendar.getInstance().get(Calendar.HOUR_OF_DAY) }
-    val isDayTime = currentHour in 6..17 // 6am a 5:59pm
-    val greetingIcon = if (isDayTime) Icons.Default.WbSunny else Icons.Default.DarkMode
-
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
         navigationIcon = {
-            IconButton(onClick = onMenuClick) {
-                Icon(Icons.Default.Menu, contentDescription = "Menú", tint = Color.White)
-            }
-        },
-        title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                /*Icon(
-                    imageVector = greetingIcon,
-                    contentDescription = if (isDayTime) "Día" else "Noche",
-                    tint = Color.White,
-                    modifier = Modifier
-                        .size(22.dp)
-                        .padding(end = 6.dp)
-                )*/
-                Text(
-                    text = "$saludo, $userName",
-                    color = Color.White,
-                    style = MaterialTheme.typography.titleSmall,
-                    maxLines = 1,
-                    overflow = TextOverflow.Visible,
-                    modifier = Modifier.basicMarquee()
-                )
-            }
-        },
-        actions = {
-            MessageActionButton(
-                unreadCount = unreadMessagesCount,
-                onClick = onMessageClick
-            )
-            NotificationActionButton(
-                unreadCount = unreadNotificationsCount,
-                onClick = onNotificationClick
-            )
             if (isStravaConnected) {
-                StravaSyncBadge()
-            }
-
-            Box(
-                modifier = Modifier
-                    .padding(end = 8.dp)
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(AppSurface)
-                    .clickable { showLogoutDialog = true },
-                contentAlignment = Alignment.Center
-            ) {
-                if (profilePhotoUrl == null) {
-                    Image(
-                        painter = painterResource(id = R.drawable.iconografia_02_svg),
-                        contentDescription = "Foto de perfil",
-                        modifier = Modifier.size(32.dp)
-                    )
-                } else {
-                    AsyncImage(
-                        model = profilePhotoUrl,
-                        contentDescription = "Foto de perfil",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .clip(CircleShape)
-                            .background(Color.Transparent)
-                    )
+                Box(
+                    modifier = Modifier
+                        .padding(start = 8.dp)
+                        .size(HeaderActionSize),
+                    contentAlignment = Alignment.Center
+                ) {
+                    StravaSyncBadge()
                 }
             }
-        }
-    )
-
-    // === DIÁLOGO DE CIERRE DE SESIÓN ===
-    if (showLogoutDialog) {
-        Dialog(onDismissRequest = { showLogoutDialog = false }) {
-            AnimatedVisibility(
-                visible = showLogoutDialog,
-                enter = scaleIn(),
-                exit = scaleOut()
+        },
+        title = {},
+        actions = {
+            Row(
+                modifier = Modifier.padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(HeaderActionSpacing)
             ) {
-                Surface(
-                    shape = RoundedCornerShape(16.dp),
-                    color = AppSurface,
-                    tonalElevation = 8.dp,
+                MessageActionButton(
+                    unreadCount = unreadMessagesCount,
+                    onClick = onMessageClick
+                )
+                NotificationActionButton(
+                    unreadCount = unreadNotificationsCount,
+                    onClick = onNotificationClick
+                )
+
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth(0.85f)
-                        .wrapContentHeight()
+                        .size(HeaderActionSize)
+                        .clip(CircleShape)
+                        .background(AppSurface)
+                        .clickable { onProfileClick() },
+                    contentAlignment = Alignment.Center
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.Center,
-                        modifier = Modifier
-                            .padding(24.dp)
-                            .background(Color.Transparent)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.ExitToApp,
-                            contentDescription = null,
-                            tint = PrimaryBlue,
-                            modifier = Modifier.size(48.dp)
+                    if (profilePhotoUrl == null) {
+                        Image(
+                            painter = painterResource(id = R.drawable.iconografia_02_svg),
+                            contentDescription = "Foto de perfil",
+                            modifier = Modifier.size(32.dp)
                         )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Text(
-                            text = "¿Deseas cerrar sesión?",
-                            color = Color.White,
-                            style = MaterialTheme.typography.titleMedium
+                    } else {
+                        AsyncImage(
+                            model = profilePhotoUrl,
+                            contentDescription = "Foto de perfil",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(32.dp)
+                                .clip(CircleShape)
+                                .background(Color.Transparent)
                         )
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        Button(
-                            onClick = {
-                                showLogoutDialog = false
-                                onLogoutClick()
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Text("Cerrar sesión", color = Color.White)
-                        }
-
-                        TextButton(
-                            onClick = { showLogoutDialog = false },
-                            modifier = Modifier.padding(top = 4.dp)
-                        ) {
-                            Text("Cancelar", color = AppTextSecondary)
-                        }
                     }
                 }
             }
         }
-    }
+    )
 }
 
 @Composable
@@ -209,27 +125,22 @@ private fun NotificationActionButton(
 ) {
     Box(
         modifier = Modifier
-            .padding(end = 4.dp)
-            .size(48.dp),
+            .size(HeaderActionSize)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier.size(46.dp)
-        ) {
-            Icon(
-                Icons.Default.Notifications,
-                contentDescription = "Notificaciones",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        Icon(
+            Icons.Outlined.Notifications,
+            contentDescription = "Notificaciones",
+            tint = Color.White,
+            modifier = Modifier.size(HeaderMainIconSize)
+        )
 
         if (unreadCount > 0) {
             CounterBadge(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = (-1).dp, y = 2.dp),
+                    .offset(x = 3.dp, y = (-2).dp),
                 unreadCount = unreadCount
             )
         }
@@ -263,27 +174,22 @@ private fun MessageActionButton(
 
     Box(
         modifier = Modifier
-            .padding(end = 4.dp)
-            .size(48.dp),
+            .size(HeaderActionSize)
+            .clickable(onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
-        IconButton(
-            onClick = onClick,
-            modifier = Modifier.size(46.dp)
-        ) {
-            Icon(
-                Icons.Default.Email,
-                contentDescription = "Mensajes",
-                tint = Color.White,
-                modifier = Modifier.size(24.dp)
-            )
-        }
+        Icon(
+            Icons.Outlined.Email,
+            contentDescription = "Mensajes",
+            tint = Color.White,
+            modifier = Modifier.size(HeaderMainIconSize)
+        )
 
         if (unreadCount > 0) {
             CounterBadge(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = (-1).dp, y = 2.dp),
+                    .offset(x = 3.dp, y = (-2).dp),
                 unreadCount = unreadCount,
                 pulseScale = pulseScale,
                 pulseAlpha = pulseAlpha
@@ -361,47 +267,52 @@ private fun StravaSyncBadge() {
 
     Box(
         modifier = Modifier
-            .padding(end = 10.dp)
-            .size(width = 28.dp, height = 24.dp)
-            .clip(RoundedCornerShape(9.dp))
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(Color(0xFFFC6A2A), Color(0xFFFC4C02))
-                )
-            )
-            .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(9.dp))
+            .size(HeaderActionSize)
             .semantics { contentDescription = "Strava conectado y sincronizado" },
         contentAlignment = Alignment.Center
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.ic_strava_mark),
-            contentDescription = null,
-            modifier = Modifier.size(12.dp),
-            colorFilter = ColorFilter.tint(Color.White)
-        )
-
         Box(
             modifier = Modifier
-                .align(Alignment.BottomEnd)
-                .padding(end = 2.dp, bottom = 2.dp)
+                .size(width = 28.dp, height = 24.dp)
+                .clip(RoundedCornerShape(9.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(Color(0xFFFC6A2A), Color(0xFFFC4C02))
+                    )
+                )
+                .border(1.dp, Color.White.copy(alpha = 0.1f), RoundedCornerShape(9.dp)),
+            contentAlignment = Alignment.Center
         ) {
+            Image(
+                painter = painterResource(id = R.drawable.ic_strava_mark),
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                colorFilter = ColorFilter.tint(Color.White)
+            )
+
             Box(
                 modifier = Modifier
-                    .size(8.dp)
-                    .graphicsLayer {
-                        scaleX = pulseScale
-                        scaleY = pulseScale
-                    }
-                    .clip(CircleShape)
-                    .background(AppSuccess.copy(alpha = pulseAlpha))
-            )
-            Box(
-                modifier = Modifier
-                    .size(5.dp)
-                    .clip(CircleShape)
-                    .background(AppSuccess)
-                    .border(1.dp, AppBorder, CircleShape)
-            )
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 2.dp, bottom = 2.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .graphicsLayer {
+                            scaleX = pulseScale
+                            scaleY = pulseScale
+                        }
+                        .clip(CircleShape)
+                        .background(AppSuccess.copy(alpha = pulseAlpha))
+                )
+                Box(
+                    modifier = Modifier
+                        .size(5.dp)
+                        .clip(CircleShape)
+                        .background(AppSuccess)
+                        .border(1.dp, AppBorder, CircleShape)
+                )
+            }
         }
     }
 }

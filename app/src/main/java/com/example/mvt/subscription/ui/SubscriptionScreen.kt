@@ -117,10 +117,7 @@ private fun SubscriptionContent(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     IconButton(
                         onClick = {
-                            navController.navigate("routines") {
-                                popUpTo("routines") { inclusive = false }
-                                launchSingleTop = true
-                            }
+                            navController.popBackStack()
                         }
                     ) {
                         Surface(

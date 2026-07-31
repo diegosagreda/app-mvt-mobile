@@ -1,7 +1,6 @@
 package com.example.mvt.ui.components
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -63,26 +62,32 @@ fun FormLegendLabel(
     fontSize: androidx.compose.ui.unit.TextUnit = 13.sp,
     fontWeight: FontWeight = FontWeight.Normal
 ) {
-    Row(
-        modifier = Modifier.padding(horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = AppSurfaceAlt,
+        border = BorderStroke(1.dp, AppBorder.copy(alpha = 0.85f))
     ) {
-        Text(
-            text = buildAnnotatedString {
-                append(text)
-                if (required) {
-                    append(" ")
-                    withStyle(SpanStyle(color = AppError)) { append("*") }
-                }
-            },
-            fontSize = fontSize,
-            fontWeight = fontWeight,
-            lineHeight = fontSize,
-            color = AppTextSecondary
-        )
-        if (info != null) {
-            Spacer(modifier = Modifier.width(4.dp))
-            FormTooltip(info)
+        Row(
+            modifier = Modifier.padding(horizontal = 3.dp, vertical = 0.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = buildAnnotatedString {
+                    append(text)
+                    if (required) {
+                        append(" ")
+                        withStyle(SpanStyle(color = AppError)) { append("*") }
+                    }
+                },
+                fontSize = fontSize,
+                fontWeight = fontWeight,
+                lineHeight = fontSize,
+                color = AppTextSecondary
+            )
+            if (info != null) {
+                Spacer(modifier = Modifier.width(2.dp))
+                FormTooltip(info)
+            }
         }
     }
 }
@@ -94,11 +99,10 @@ fun FormLegendField(
     content: @Composable (Modifier) -> Unit
 ) {
     Box(modifier = modifier) {
-        content(Modifier.padding(top = 10.dp))
+        content(Modifier.padding(top = 14.dp))
         Box(
             modifier = Modifier
-                .padding(start = 10.dp)
-                .background(AppSurface) // Para tapar la línea del borde del input
+                .padding(start = 12.dp)
                 .zIndex(1f)
         ) {
             label()

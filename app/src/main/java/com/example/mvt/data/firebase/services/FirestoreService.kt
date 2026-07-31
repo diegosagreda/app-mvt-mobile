@@ -9,6 +9,7 @@ import com.example.mvt.data.firebase.models.StravaCompliance
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
 import kotlinx.coroutines.tasks.await
 import java.util.Date
 import java.time.YearMonth
@@ -54,6 +55,36 @@ class FirestoreService {
             .await()
 
         Log.d("FirestoreService", "Documentos encontrados en $month: ${snapshot.size()}")
+
+        return snapshot.documents.mapNotNull(::parseRoutineDocument)
+    }
+
+    suspend fun getRoutinesForStatistics(
+        athleteId: String,
+        trainerId: String?,
+        start: Timestamp,
+        end: Timestamp,
+        onlyComplete: Boolean
+    ): List<Routine> {
+        var query: Query = db.collection("rutinas")
+            .whereEqualTo("id_deportista", athleteId)
+
+        if (!trainerId.isNullOrBlank()) {
+            query = query.whereEqualTo("id_entrenador", trainerId)
+        }
+
+        if (onlyComplete) {
+            query = query.whereEqualTo("completa", true)
+        }
+
+        val snapshot = query
+            .whereGreaterThanOrEqualTo("fecha", start)
+            .whereLessThan("fecha", end)
+            .orderBy("fecha")
+            .get()
+            .await()
+
+        Log.d("FirestoreService", "Rutinas para estadisticas: ${snapshot.size()}")
 
         return snapshot.documents.mapNotNull(::parseRoutineDocument)
     }
@@ -139,8 +170,10 @@ class FirestoreService {
             titulo = data["titulo"] as? String ?: "",
             descripcion = data["descripcion"] as? String ?: "",
             id_deportista = data["id_deportista"] as? String ?: "",
+            id_entrenador = data["id_entrenador"] as? String ?: "",
             fecha = fecha,
             completa = data["completa"] as? Boolean ?: false,
+            mostrar = data["mostrar"] as? Boolean ?: true,
             estado = data["estado"] as? String ?: "",
             objetivos = data["objetivos"] as? String ?: "",
             tipo_esfuerzo = data["tipo_esfuerzo"] as? String ?: "",
