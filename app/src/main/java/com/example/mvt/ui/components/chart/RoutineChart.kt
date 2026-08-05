@@ -7,7 +7,8 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -186,7 +188,7 @@ fun RoutineChart(
         buildChartModel(routine, ritmos, zonas)
     }
     var selectedSample by remember(chartModel) { mutableStateOf<ChartSample?>(null) }
-    var selectedYAxisTick by remember(chartModel) { mutableStateOf<YAxisTick?>(null) }
+    var showTooltipOnRight by remember(chartModel) { mutableStateOf(true) }
     val density = LocalDensity.current
 
     Column(
@@ -205,105 +207,120 @@ fun RoutineChart(
             val chartArea = remember(boxWidthPx, boxHeightPx) {
                 chartBounds(boxWidthPx, boxHeightPx)
             }
-            val yAxisTooltipOffset = selectedYAxisTick?.let { tick ->
-                val targetY = chartYToCanvasY(tick.value, chartModel.maxY, chartArea)
-                with(density) { (targetY - 28f).toDp() }
-                    .coerceIn(20.dp, (maxHeight - 88.dp).coerceAtLeast(20.dp))
-            } ?: 0.dp
 
             Canvas(
                 modifier = Modifier
                     .fillMaxSize()
                     .pointerInput(chartModel) {
-                        detectTapGestures { tapOffset ->
+                        awaitEachGesture {
+                            val down = awaitFirstDown(requireUnconsumed = false)
                             val bounds = chartBounds(size.width.toFloat(), size.height.toFloat())
-                            val tappedYAxis = tapOffset.x in 0f..bounds.left &&
-                                tapOffset.y in bounds.top..bounds.bottom
+                            
+                            // El gesto solo se activa si el primer toque ocurre dentro del área real de datos
+                            val isInsidePlot = down.position.x in bounds.left..bounds.right &&
+                                               down.position.y in bounds.top..bounds.bottom
 
-                            if (tappedYAxis) {
-                                selectedYAxisTick = chartModel.yTicks.minByOrNull { tick ->
-                                    abs(chartYToCanvasY(tick.value, chartModel.maxY, bounds) - tapOffset.y)
-                                }
+                            if (!isInsidePlot) {
+                                // Tap fuera de la zona interactiva -> Limpiar selección
                                 selectedSample = null
-                                return@detectTapGestures
+                                return@awaitEachGesture
                             }
 
-                            if (tapOffset.x < bounds.left || tapOffset.x > bounds.right ||
-                                tapOffset.y < bounds.top || tapOffset.y > bounds.bottom
-                            ) {
-                                selectedSample = null
-                                selectedYAxisTick = null
-                                return@detectTapGestures
+                            fun updateSelection(position: Offset) {
+                                // X governa la selección, haciendo clamp a los límites del plot si el drag se sale un poco
+                                val xValue = (((position.x - bounds.left) / bounds.width) * chartModel.maxX)
+                                    .coerceIn(0f, chartModel.maxX)
+
+                                val newSample = chartModel.points
+                                    .filterNot {
+                                        chartModel.xAxisTitle == "Km" && it.ultimoBloque
+                                    }
+                                    .minByOrNull { abs(it.x - xValue) }
+                                
+                                if (newSample != selectedSample) {
+                                    selectedSample = newSample
+                                }
                             }
 
-                            val xValue = (((tapOffset.x - bounds.left) / bounds.width) * chartModel.maxX)
-                                .coerceIn(0f, chartModel.maxX)
+                            // Procesar contacto inicial
+                            updateSelection(down.position)
 
-                            selectedSample = chartModel.points
-                                .filterNot {
-                                    chartModel.xAxisTitle == "Km" && it.ultimoBloque
+                            // Continuar mientras el dedo se desplace (Exploración continua / Scrubbing)
+                            var pointerId = down.id
+                            while (true) {
+                                val event = awaitPointerEvent()
+                                val anyPressed = event.changes.any { it.pressed }
+                                if (!anyPressed) break
+
+                                val change = event.changes.firstOrNull { it.id == pointerId }
+                                if (change != null && change.pressed) {
+                                    updateSelection(change.position)
+                                    // Consumir el evento para bloquear el scroll del contenedor padre durante el drag
+                                    change.consume()
+                                } else {
+                                    val newPointer = event.changes.firstOrNull { it.pressed }
+                                    if (newPointer != null) {
+                                        pointerId = newPointer.id
+                                        updateSelection(newPointer.position)
+                                        newPointer.consume()
+                                    } else {
+                                        break
+                                    }
                                 }
-                                .minByOrNull { abs(it.x - xValue) }
-                            selectedYAxisTick = null
+                            }
                         }
                     }
             ) {
                 val bounds = chartBounds(size.width, size.height)
-                drawRoutineChart(bounds, chartModel, selectedSample, selectedYAxisTick)
+                drawRoutineChart(bounds, chartModel, selectedSample)
             }
 
             selectedSample?.let { sample ->
                 val tooltipLines = buildTooltipLines(chartModel, sample)
                 if (tooltipLines.isNotEmpty()) {
+                    val canvasX = chartArea.left + (sample.x / chartModel.maxX.coerceAtLeast(0.01f)) * chartArea.width
+                    val tooltipWidth = 160.dp
+                    val tooltipWidthPx = with(density) { tooltipWidth.toPx() }
+                    val marginPx = with(density) { 16.dp.toPx() }
+                    val chartCenter = chartArea.left + chartArea.width / 2f
+                    val fitsOnRight = (canvasX + marginPx + tooltipWidthPx) <= chartArea.right
+                    val fitsOnLeft = (canvasX - marginPx - tooltipWidthPx) >= chartArea.left
+                    showTooltipOnRight = when {
+                        fitsOnRight && !fitsOnLeft -> true
+                        !fitsOnRight && fitsOnLeft -> false
+                        else -> canvasX < chartCenter
+                    }
+
+                    val targetX = if (showTooltipOnRight) {
+                        canvasX + marginPx
+                    } else {
+                        canvasX - tooltipWidthPx - marginPx
+                    }
+                    val offsetX = targetX.coerceIn(chartArea.left, chartArea.right - tooltipWidthPx)
+
                     Surface(
                         modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = 8.dp),
+                            .offset(x = with(density) { offsetX.toDp() }, y = 8.dp)
+                            .sizeIn(minWidth = tooltipWidth, maxWidth = tooltipWidth),
                         shape = RoundedCornerShape(16.dp),
-                        color = AppSurface,
-                        border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder.copy(alpha = 0.8f))
+                        color = AppSurface.copy(alpha = 0.95f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder.copy(alpha = 0.8f)),
+                        tonalElevation = 4.dp
                     ) {
-                        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp)) {
+                        Column(
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                        ) {
                             tooltipLines.forEachIndexed { index, line ->
                                 Text(
                                     text = line,
-                                    color = if (index == 0) AppTextPrimary else AppTextSecondary,
-                                    fontSize = 12.sp,
-                                    fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Normal
+                                    color = AppTextPrimary,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (index == 0) FontWeight.SemiBold else FontWeight.Normal,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
-                        }
-                    }
-                }
-            }
-
-            androidx.compose.animation.AnimatedVisibility(
-                visible = selectedYAxisTick != null,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = 10.dp, y = yAxisTooltipOffset),
-                enter = fadeIn(),
-                exit = fadeOut()
-            ) {
-                selectedYAxisTick?.let { tick ->
-                    Surface(
-                        shape = RoundedCornerShape(14.dp),
-                        color = AppSurfaceAlt.copy(alpha = 0.96f),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder.copy(alpha = 0.7f))
-                    ) {
-                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                            Text(
-                                text = chartModel.yAxisTitle,
-                                color = AppTextSecondary,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                            Text(
-                                text = tick.label,
-                                color = AppTextPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
                         }
                     }
                 }
@@ -512,8 +529,7 @@ private fun buildChartModel(
 private fun DrawScope.drawRoutineChart(
     bounds: ChartBounds,
     model: ChartModel,
-    selectedSample: ChartSample?,
-    selectedYAxisTick: YAxisTick?
+    selectedSample: ChartSample?
 ) {
     val dummyPoint = ChartSample(
         x = 0f,
@@ -601,24 +617,10 @@ private fun DrawScope.drawRoutineChart(
         )
     }
 
-    selectedYAxisTick?.let { tick ->
-        val guideY = toCanvasY(tick.value)
-        drawLine(
-            color = Color.White.copy(alpha = 0.16f),
-            start = Offset(bounds.left, guideY),
-            end = Offset(bounds.right, guideY),
-            strokeWidth = 1.5f
-        )
-    }
-
     drawContext.canvas.nativeCanvas.apply {
         labelPaint.textAlign = Paint.Align.RIGHT
         model.yTicks.forEach { tick ->
-            labelPaint.color = if (tick == selectedYAxisTick) {
-                android.graphics.Color.parseColor("#F4F7FF")
-            } else {
-                android.graphics.Color.parseColor("#A2A5B9")
-            }
+            labelPaint.color = android.graphics.Color.parseColor("#A2A5B9")
             val y = toCanvasY(tick.value) + 8f
             drawText(tick.compactLabel, bounds.left - 12f, y, labelPaint)
         }
@@ -972,14 +974,6 @@ private fun compactSensationLabel(label: String): String {
         "No tan fuerte" -> "N fuerte"
         else -> label
     }
-}
-
-private fun chartYToCanvasY(
-    y: Float,
-    maxY: Float,
-    bounds: ChartBounds
-): Float {
-    return bounds.bottom - (y / maxY.coerceAtLeast(1f)) * bounds.height
 }
 
 private fun formatDistance(distanceKm: Double): String {
