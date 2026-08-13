@@ -206,6 +206,8 @@ fun RoutinesScreen(
 
                 try {
                     routineViewModel.loadRoutinesForMonth(currentAthleteId, visibleMonth)
+                    routineViewModel.loadRoutinesForMonth(currentAthleteId, visibleMonth.minusMonths(1))
+                    routineViewModel.loadRoutinesForMonth(currentAthleteId, visibleMonth.plusMonths(1))
                 } catch (e: Exception) {
                     Log.e("RoutinesScreen", "Error al cargar rutinas del mes $visibleMonth", e)
                 }
@@ -1195,6 +1197,8 @@ private fun PerformanceDayCell(
 ) {
     val enabled = day.position == DayPosition.MonthDate
     val alpha = if (enabled) 1f else 0.34f
+
+    // Lógica unificada para días del mes y rellenos (coherencia)
     val hasContent = insight.routines.isNotEmpty() || !isAvailable
     val hasStatusColor = insight.status != PerformanceStatus.REST && hasContent
     val contentColor = AppTextPrimary.copy(alpha = alpha)
