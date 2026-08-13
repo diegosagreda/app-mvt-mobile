@@ -1166,9 +1166,10 @@ private fun WeeklyLoadPopupMetric(label: String, value: String, modifier: Modifi
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 private fun CalendarWeekLabels(modifier: Modifier = Modifier) {
-    Row(modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
         Box(Modifier.width(22.dp))
         daysOfWeek(firstDayOfWeek = DayOfWeek.MONDAY).forEach { day ->
             Text(
@@ -1194,7 +1195,8 @@ private fun PerformanceDayCell(
 ) {
     val enabled = day.position == DayPosition.MonthDate
     val alpha = if (enabled) 1f else 0.34f
-    val hasStatusColor = insight.status != PerformanceStatus.REST
+    val hasContent = insight.routines.isNotEmpty() || !isAvailable
+    val hasStatusColor = insight.status != PerformanceStatus.REST && hasContent
     val contentColor = AppTextPrimary.copy(alpha = alpha)
     val borderColor = when {
         isSelected -> PrimaryBlue
@@ -1219,7 +1221,7 @@ private fun PerformanceDayCell(
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.SpaceBetween
+            verticalArrangement = if (hasContent) Arrangement.SpaceBetween else Arrangement.Top
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -1232,7 +1234,7 @@ private fun PerformanceDayCell(
                     fontSize = 12.sp,
                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold
                 )
-                if (insight.hasStrava) {
+                if (insight.hasStrava && hasContent) {
                     Image(
                         painter = painterResource(id = R.drawable.ic_strava_mark),
                         contentDescription = null,
@@ -1242,34 +1244,36 @@ private fun PerformanceDayCell(
                 }
             }
 
-            ProgressRing(
-                progress = insight.progress,
-                color = insight.accent,
-                modifier = Modifier.size(28.dp)
-            ) {
-                Icon(
-                    imageVector = if (enabled && !isAvailable) Icons.Default.Bedtime else insight.sportIcon,
-                    contentDescription = null,
-                    tint = insight.accent,
-                    modifier = Modifier.size(15.dp)
+            if (hasContent) {
+                ProgressRing(
+                    progress = insight.progress,
+                    color = insight.accent,
+                    modifier = Modifier.size(28.dp)
+                ) {
+                    Icon(
+                        imageVector = if (insight.routines.isEmpty() && !isAvailable) Icons.Default.Bedtime else insight.sportIcon,
+                        contentDescription = null,
+                        tint = insight.accent,
+                        modifier = Modifier.size(15.dp)
+                    )
+                }
+
+                Text(
+                    text = insight.compactMetric,
+                    color = contentColor,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = insight.compactCompliance,
+                    color = insight.accent.copy(alpha = alpha),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1
                 )
             }
-
-            Text(
-                text = insight.compactMetric,
-                color = contentColor,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-            Text(
-                text = insight.compactCompliance,
-                color = insight.accent.copy(alpha = alpha),
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1
-            )
         }
     }
 }
@@ -2774,6 +2778,7 @@ private fun buildWeeklyMetrics(insights: List<DayPerformance>): WeeklyMetrics {
     )
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 private fun Routine.localDate(): LocalDate? {
     return fecha?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDate()
 }
@@ -2813,6 +2818,7 @@ private fun Routine.intensityLevel(): Int {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 private fun TrainingAvailability.isAvailable(dayOfWeek: DayOfWeek): Boolean {
     return when (dayOfWeek) {
         DayOfWeek.MONDAY -> monday
