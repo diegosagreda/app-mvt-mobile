@@ -60,8 +60,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun RoutineDetailScreen(
     routine: Routine,
-    ritmos: Map<String, Any>?,   // ← parámetros correctamente definidos
-    zonas: Map<String, Any>?,    // ← parámetros correctamente definidos
+    ritmos: Map<String, Any>?,
+    zonas: Map<String, Any>?,
     onBackClick: () -> Unit
 ) {
     var routineState by remember(routine.id) { mutableStateOf(routine) }

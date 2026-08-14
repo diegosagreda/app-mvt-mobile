@@ -29,8 +29,8 @@ class RoutineViewModel(
 
     suspend fun loadRoutinesForMonth(athleteId: String, month: YearMonth) {
         val cacheKey = "$athleteId-$month"
-        routinesCache[cacheKey]?.let { cachedRoutines ->
-            _routines.value = cachedRoutines
+        if (routinesCache.containsKey(cacheKey)) {
+            emitAllCached()
             return
         }
 
@@ -38,9 +38,13 @@ class RoutineViewModel(
         try {
             val data = getRoutinesByAthleteUseCase(athleteId, month)
             routinesCache[cacheKey] = data
-            _routines.value = data
+            emitAllCached()
         } finally {
             _isLoading.value = false
         }
+    }
+
+    private fun emitAllCached() {
+        _routines.value = routinesCache.values.flatten().distinctBy { it.id }
     }
 }
