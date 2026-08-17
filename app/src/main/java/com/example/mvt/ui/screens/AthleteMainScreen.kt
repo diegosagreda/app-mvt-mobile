@@ -106,10 +106,10 @@ import com.example.mvt.utils.StravaAuthRedirectBus
 import com.example.mvt.viewmodels.RealtimeViewModel
 import com.example.mvt.ui.viewmodels.UserViewModel
 import com.example.mvt.ui.screens.personaldata.ProfileScreen
-import com.example.mvt.trainer.ui.TrainerScreen
-import com.example.mvt.trainer.ui.TrainersCatalogScreen
-import com.example.mvt.trainer.viewmodel.TrainerViewModel
-import com.example.mvt.trainer.viewmodel.TrainersCatalogViewModel
+import com.example.mvt.trainer.catalog.ui.TrainerScreen
+import com.example.mvt.trainer.catalog.ui.TrainersCatalogScreen
+import com.example.mvt.trainer.catalog.viewmodel.TrainerViewModel
+import com.example.mvt.trainer.catalog.viewmodel.TrainersCatalogViewModel
 import com.example.mvt.goals.ui.GoalsScreen
 import com.example.mvt.goals.viewmodel.GoalsViewModel
 import com.example.mvt.availability.ui.AvailabilityScreen
@@ -472,6 +472,7 @@ fun AthleteMainScreen(
                     }
                     composable("account_settings") {
                         AccountSettingsScreen(
+                            showConnection = true,
                             onNavigate = { route ->
                                 innerNavController.navigate(route) {
                                     launchSingleTop = true
@@ -919,159 +920,6 @@ private fun PlanHubCard(
                     overflow = TextOverflow.Ellipsis
                 )
             }
-        }
-    }
-}
-
-private data class AccountSettingsOption(
-    val title: String,
-    val subtitle: String,
-    val route: String?,
-    val icon: ImageVector,
-    val accent: Color,
-    val destructive: Boolean = false
-)
-
-private val accountSettingsOptions = listOf(
-    AccountSettingsOption(
-        title = "Conexión",
-        subtitle = "Sincronización y servicios externos",
-        route = "connection",
-        icon = Icons.Default.Link,
-        accent = Color(0xFF63C7FF)
-    ),
-    AccountSettingsOption(
-        title = "Ayuda",
-        subtitle = "Soporte y orientación de la app",
-        route = UnderConstructionDestination.routeFor("help"),
-        icon = Icons.Default.HelpOutline,
-        accent = Color(0xFFC29BFF)
-    ),
-    AccountSettingsOption(
-        title = "Acerca de",
-        subtitle = "Información de My Virtual Trainer",
-        route = UnderConstructionDestination.routeFor("about"),
-        icon = Icons.Default.Info,
-        accent = Color(0xFF62D9A8)
-    ),
-    AccountSettingsOption(
-        title = "Cerrar sesión",
-        subtitle = "Salir de tu cuenta actual",
-        route = null,
-        icon = Icons.Default.ExitToApp,
-        accent = Color(0xFFFF8A8A),
-        destructive = true
-    )
-)
-
-@Composable
-private fun AccountSettingsScreen(
-    onNavigate: (String) -> Unit,
-    onLogout: () -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(AppBackground),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-        contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 24.dp)
-    ) {
-        item {
-            Text(
-                text = "Cuenta y configuración",
-                color = Color.White,
-                fontSize = 22.sp,
-                fontWeight = FontWeight.Black,
-                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
-            )
-        }
-
-        item {
-            Text(
-                text = "Gestiona conexiones, soporte e información de tu cuenta.",
-                color = AppTextSecondary,
-                fontSize = 13.sp,
-                lineHeight = 18.sp,
-                modifier = Modifier.padding(bottom = 4.dp)
-            )
-        }
-
-        accountSettingsOptions.forEach { option ->
-            item {
-                AccountSettingsRow(
-                    option = option,
-                    onClick = {
-                        option.route?.let(onNavigate) ?: onLogout()
-                    }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AccountSettingsRow(
-    option: AccountSettingsOption,
-    onClick: () -> Unit
-) {
-    val titleColor = if (option.destructive) option.accent else Color.White
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick),
-        color = AppSurface,
-        shape = RoundedCornerShape(18.dp),
-        border = BorderStroke(1.dp, AppBorder),
-        shadowElevation = 2.dp
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 14.dp, vertical = 13.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(option.accent.copy(alpha = 0.16f)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = option.icon,
-                    contentDescription = null,
-                    tint = option.accent,
-                    modifier = Modifier.size(22.dp)
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(3.dp)
-            ) {
-                Text(
-                    text = option.title,
-                    color = titleColor,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Black,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = option.subtitle,
-                    color = AppTextSecondary,
-                    fontSize = 12.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-
-            Icon(
-                imageVector = Icons.Default.ArrowForward,
-                contentDescription = null,
-                tint = AppTextSecondary,
-                modifier = Modifier.size(18.dp)
-            )
         }
     }
 }

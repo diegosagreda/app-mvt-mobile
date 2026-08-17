@@ -21,6 +21,7 @@ import androidx.navigation.compose.rememberNavController
 import com.example.mvt.domain.repositories.UserRepository
 import com.example.mvt.domain.usecases.GetUserInfoUseCase
 import com.example.mvt.ui.screens.AthleteMainScreen
+import com.example.mvt.trainer.main.ui.TrainerMainScreen
 import com.example.mvt.ui.screens.LogoScreen
 import com.example.mvt.ui.screens.SessionScreen
 import com.example.mvt.ui.screens.auth.LoginScreen
@@ -180,13 +181,11 @@ fun AppNavigation() {
         }
     }
 
-    Box(Modifier.fillMaxSize()) {
-
-        // ====== NAVHOST ======
-        NavHost(
-            navController = navController,
-            startDestination = startDestination
-        ) {
+    // ====== NAVHOST (Fixed Start Destination for stability) ======
+    NavHost(
+        navController = navController,
+        startDestination = "session_checker"
+    ) {
             composable("session_checker") {
                 SessionScreen(navController = navController)
             }
@@ -247,6 +246,13 @@ fun AppNavigation() {
                 )
             }
 
+            composable("trainerMain") {
+                TrainerMainScreen(
+                    navController = navController,
+                    userViewModel = userViewModel
+                )
+            }
+
             composable("athleteChat") {
                 ChatScreen(
                     uid = athleteId,
@@ -264,7 +270,6 @@ fun AppNavigation() {
                 )
             }
         }
-    }
 }
 
 private fun ChatMessage.notificationPreview(): String {

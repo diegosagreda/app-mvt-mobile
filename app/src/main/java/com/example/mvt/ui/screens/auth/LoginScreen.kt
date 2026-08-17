@@ -84,9 +84,31 @@ fun LoginScreen(navController: NavController, viewModel: AuthViewModel = viewMod
 
     LaunchedEffect(user) {
         user?.let { signedInUser ->
+            val authService = AuthService()
             val destination = runCatching {
-                if (AuthService().hasCompletedWelcome(signedInUser.uid)) "athleteMain" else "welcome"
+                when {
+                    authService.getUserRole(signedInUser.uid)
+                        .equals("Entrenador", ignoreCase = true) -> {
+                        "trainerMain"
+                    }
+
+                    authService.getUserRole(signedInUser.uid)
+                        .equals("Deportista", ignoreCase = true) -> {
+                        if (authService.hasCompletedWelcome(signedInUser.uid)) {
+                            "athleteMain"
+                        } else {
+                            "welcome"
+                        }
+                    }
+
+                    else -> {
+                        "login"
+                    }
+                }
             }.getOrElse {
+                "login"
+            }
+            if (destination == "login") {
                 viewModel.logout()
                 return@LaunchedEffect
             }

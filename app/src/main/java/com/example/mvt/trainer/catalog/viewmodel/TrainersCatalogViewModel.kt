@@ -1,12 +1,12 @@
-package com.example.mvt.trainer.viewmodel
+package com.example.mvt.trainer.catalog.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.mvt.trainer.data.TrainersCatalogRepository
-import com.example.mvt.trainer.model.AthleteRatingProfile
-import com.example.mvt.trainer.model.TrainerProfile
-import com.example.mvt.trainer.model.TrainerRequest
-import com.example.mvt.trainer.model.TrainersCatalogState
+import com.example.mvt.trainer.catalog.data.TrainersCatalogRepository
+import com.example.mvt.trainer.catalog.model.AthleteRatingProfile
+import com.example.mvt.trainer.catalog.model.TrainerProfile
+import com.example.mvt.trainer.catalog.model.TrainerRequest
+import com.example.mvt.trainer.catalog.model.TrainersCatalogState
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

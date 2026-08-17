@@ -72,10 +72,12 @@ class AuthViewModel : ViewModel() {
                         _error.value = "Debes verificar tu correo antes de ingresar."
                         return@launch
                     }
-                    !repo.getUserRole(signedInUser.uid).equals("Deportista", ignoreCase = true) -> {
+                    !isMobileRoleAllowed(
+                        role = repo.getUserRole(signedInUser.uid)
+                    ) -> {
                         repo.logout()
                         _user.value = null
-                        _error.value = "Esta aplicación está disponible únicamente para deportistas."
+                        _error.value = "Tu tipo de cuenta aún no está disponible en la aplicación móvil."
                         return@launch
                     }
                     else -> _user.value = signedInUser
@@ -140,10 +142,10 @@ class AuthViewModel : ViewModel() {
                                 user = signedInUser,
                                 googleProfile = googleProfile
                             )
-                            !role.equals("Deportista", ignoreCase = true) -> {
+                            !isMobileRoleAllowed(role) -> {
                                 repo.logout()
                                 _user.value = null
-                                val message = "Esta aplicación está disponible únicamente para deportistas."
+                                val message = "Tu tipo de cuenta aún no está disponible en la aplicación móvil."
                                 _error.value = message
                                 onError(message)
                                 return@launch
@@ -169,6 +171,10 @@ class AuthViewModel : ViewModel() {
         )
     }
 
+    private fun isMobileRoleAllowed(role: String): Boolean {
+        return role.equals("Deportista", ignoreCase = true) ||
+                role.equals("Entrenador", ignoreCase = true)
+    }
     private fun mapAuthError(error: Exception): String {
         return when (error) {
             is FirebaseAuthInvalidUserException,

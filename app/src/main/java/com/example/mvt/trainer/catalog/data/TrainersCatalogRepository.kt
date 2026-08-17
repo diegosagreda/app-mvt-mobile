@@ -1,13 +1,13 @@
-package com.example.mvt.trainer.data
+package com.example.mvt.trainer.catalog.data
 
-import com.example.mvt.trainer.model.AssignmentStatus
-import com.example.mvt.trainer.model.AthletePlan
-import com.example.mvt.trainer.model.AthleteRatingProfile
-import com.example.mvt.trainer.model.TrainerCardModel
-import com.example.mvt.trainer.model.TrainerProfile
-import com.example.mvt.trainer.model.TrainerRelationship
-import com.example.mvt.trainer.model.TrainerRequest
-import com.example.mvt.trainer.model.TrainersCatalogState
+import com.example.mvt.trainer.catalog.model.AssignmentStatus
+import com.example.mvt.trainer.catalog.model.AthletePlan
+import com.example.mvt.trainer.catalog.model.AthleteRatingProfile
+import com.example.mvt.trainer.catalog.model.TrainerCardModel
+import com.example.mvt.trainer.catalog.model.TrainerProfile
+import com.example.mvt.trainer.catalog.model.TrainerRelationship
+import com.example.mvt.trainer.catalog.model.TrainerRequest
+import com.example.mvt.trainer.catalog.model.TrainersCatalogState
 import com.google.firebase.Timestamp
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
