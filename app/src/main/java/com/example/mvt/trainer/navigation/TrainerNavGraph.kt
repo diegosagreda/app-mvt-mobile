@@ -7,6 +7,7 @@ import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.example.mvt.data.firebase.models.User
 import com.example.mvt.trainer.main.ui.HomeScreen
 import com.example.mvt.trainer.profile.ui.PersonalInfoScreen
 import com.example.mvt.trainer.profile.ui.ProfileScreen
@@ -18,7 +19,8 @@ import com.google.firebase.auth.FirebaseAuth
 @Composable
 fun TrainerNavGraph(
     navController: NavHostController,
-    rootNavController: NavHostController, // Para el logout principal
+    rootNavController: NavHostController,
+    user: User?,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -27,7 +29,7 @@ fun TrainerNavGraph(
         modifier = modifier
     ) {
         composable(TrainerDestination.HOME) {
-            HomeScreen()
+            HomeScreen(user = user)
         }
 
         composable(TrainerDestination.PROFILE) {
@@ -63,7 +65,6 @@ fun TrainerNavGraph(
             )
         }
 
-        // Pantallas de "En construcción"
         composable(
             route = UnderConstructionDestination.routePattern,
             arguments = listOf(navArgument(UnderConstructionDestination.featureArg) { type = NavType.StringType })

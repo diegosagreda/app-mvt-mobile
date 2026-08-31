@@ -20,7 +20,6 @@ class UserService {
     private val storage = FirebaseStorage.getInstance()
     private val auth    = FirebaseAuth.getInstance()
 
-    // === Mapeo Manual ===
     private fun mapSnapshotToUser(snapshot: DataSnapshot): User? {
         if (!snapshot.exists()) return null
         return try {
@@ -29,7 +28,7 @@ class UserService {
                 nombres = snapshot.child("nombres").value?.toString(),
                 apellidos = snapshot.child("apellidos").value?.toString(),
                 email = snapshot.child("email").value?.toString(),
-                ciudadActual = snapshot.child("ciudadActual").value?.toString(),
+                ciudadActual = snapshot.child("ciudadActual").value?.toString() ?: snapshot.child("ciudad").value?.toString(),
                 direccion = snapshot.child("direccion").value?.toString(),
                 estado = snapshot.child("estado").value?.toString(),
                 estrellas = snapshot.child("estrellas").value?.toString()?.toIntOrNull(),
@@ -42,15 +41,19 @@ class UserService {
                 telefono = snapshot.child("telefono").value?.toString(),
                 genero = snapshot.child("genero").value?.toString(),
                 identificacion = snapshot.child("identificacion").value?.toString(),
-                pais = snapshot.child("pais").value?.toString()
+                pais = snapshot.child("pais").value?.toString(),
+                deporte = snapshot.child("deporte").value?.toString(),
+                especialidad = snapshot.child("especialidad").value?.toString(),
+                rol = snapshot.child("rol").value?.toString(),
+                formularioBienvenida = snapshot.child("formularioBienvenida").value?.toString() == "true" || snapshot.child("formularioBienvenida").value?.toString() == "2",
+                pasoBienvenida = snapshot.child("pasoBienvenida").value?.toString()?.toIntOrNull()
             )
         } catch (e: Exception) {
-            Log.e("UserService", "Error mapeando usuario manualmente", e)
+            Log.e("UserService", "Error mapeando usuario", e)
             null
         }
     }
 
-    // === Observar cambios en tiempo real sin crashes ===
     fun observeCurrentUser(): Flow<User?> = callbackFlow {
         val uid = auth.currentUser?.uid
         if (uid == null) {
@@ -61,10 +64,6 @@ class UserService {
 
         val listener = object : ValueEventListener {
             override fun onDataChange(snapshot: DataSnapshot) {
-                if (auth.currentUser == null) {
-                    trySend(null)
-                    return
-                }
                 trySend(mapSnapshotToUser(snapshot))
             }
             override fun onCancelled(error: DatabaseError) {

@@ -47,7 +47,6 @@ fun TrainerMainScreen(
     val currentRoute = backStackEntry?.destination?.route
     val user by userViewModel.user.collectAsState()
 
-    // Cargar info del usuario si no está cargada
     LaunchedEffect(Unit) {
         userViewModel.loadUserInfo()
     }
@@ -74,7 +73,6 @@ fun TrainerMainScreen(
             TrainerBottomNavigationBar(
                 currentRoute = currentRoute,
                 onNavigate = { destination ->
-                    // Si navegamos a Inicio o Perfil, sacamos Settings de la pila si estaba ahí
                     if (currentRoute != destination) {
                         trainerNavController.navigate(destination) {
                             popUpTo(trainerNavController.graph.startDestinationId) {
@@ -92,6 +90,7 @@ fun TrainerMainScreen(
         TrainerNavGraph(
             navController = trainerNavController,
             rootNavController = navController as NavHostController,
+            user = user,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -109,12 +108,12 @@ private fun TrainerHeader(
     TopAppBar(
         colors = TopAppBarDefaults.topAppBarColors(containerColor = AppBackground),
         navigationIcon = {
-            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(start = 14.dp)) {
-                Text(
-                    text = "Entrenador",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
+            IconButton(onClick = { /* Home Click */ }) {
+                Icon(
+                    imageVector = Icons.Default.Favorite,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
                 )
             }
         },
