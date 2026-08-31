@@ -1,4 +1,4 @@
-package com.example.mvt.trainer.ui
+package com.example.mvt.trainer.catalog.ui
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -13,7 +13,6 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -29,7 +28,6 @@ import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
 import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PersonSearch
 import androidx.compose.material.icons.filled.Person
@@ -77,15 +75,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.example.mvt.R
-import com.example.mvt.trainer.model.AthletePlan
-import com.example.mvt.trainer.model.TrainerCardModel
-import com.example.mvt.trainer.model.TrainerProfile
-import com.example.mvt.trainer.model.TrainerRelationship
-import com.example.mvt.trainer.model.TrainersCatalogState
-import com.example.mvt.trainer.viewmodel.TrainersCatalogViewModel
+import com.example.mvt.trainer.catalog.model.AthletePlan
+import com.example.mvt.trainer.catalog.model.TrainerCardModel
+import com.example.mvt.trainer.catalog.model.TrainerRelationship
+import com.example.mvt.trainer.catalog.model.TrainersCatalogState
+import com.example.mvt.trainer.catalog.viewmodel.TrainersCatalogViewModel
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
-import com.example.mvt.ui.theme.AppPrimarySoft
 import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.AppSurfaceAlt
 import com.example.mvt.ui.theme.AppTextPrimary

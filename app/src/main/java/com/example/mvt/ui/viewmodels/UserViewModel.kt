@@ -9,6 +9,7 @@ import com.example.mvt.domain.repositories.UserRepository
 import com.example.mvt.domain.usecases.GetUserInfoUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 // === Estados posibles de la pantalla de perfil ===
@@ -24,22 +25,31 @@ class UserViewModel(
 ) : ViewModel() {
 
     private val repository = UserRepository()
+    private val userService = com.example.mvt.data.firebase.services.UserService()
 
-    // === Estado del usuario ===
+    // === Estado del usuario en TIEMPO REAL ===
     private val _user = MutableStateFlow<User?>(null)
     val user: StateFlow<User?> = _user
+
+    init {
+        // Observar cambios del usuario permanentemente mientras el VM exista
+        viewModelScope.launch {
+            userService.observeCurrentUser().collectLatest { updatedUser ->
+                _user.value = updatedUser
+            }
+        }
+    }
 
     // === Estado de la UI ===
     private val _uiState = MutableStateFlow<ProfileUiState>(ProfileUiState.Idle)
     val uiState: StateFlow<ProfileUiState> = _uiState
 
-    // === Cargar usuario ===
+    // === Cargar usuario (Manual fallback) ===
     fun loadUserInfo() {
         viewModelScope.launch {
             _uiState.value = ProfileUiState.Loading
             try {
                 val userInfo = getUserInfoUseCase()
-                Log.d("UserViewModel", "Usuario cargado: ${userInfo?.nombres}")
                 _user.value  = userInfo
                 _uiState.value = ProfileUiState.Idle
             } catch (e: Exception) {
@@ -72,8 +82,6 @@ class UserViewModel(
                     alias        = alias,
                     documento    = documento
                 )
-                // Recarga el usuario para reflejar cambios
-                _user.value = getUserInfoUseCase()
                 _uiState.value = ProfileUiState.Saved
                 onSuccess()
             } catch (e: Exception) {
@@ -89,8 +97,6 @@ class UserViewModel(
         viewModelScope.launch {
             try {
                 repository.uploadProfilePhoto(uri)
-                // Recarga usuario para mostrar nueva foto
-                _user.value = getUserInfoUseCase()
                 Log.d("UserViewModel", "Foto subida correctamente")
             } catch (e: Exception) {
                 Log.e("UserViewModel", "Error subiendo foto", e)

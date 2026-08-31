@@ -104,17 +104,30 @@ fun SessionScreen(navController: NavController) {
             }.getOrDefault("")
         }.orEmpty()
         val isAthlete = userRole.equals("Deportista", ignoreCase = true)
+        val isTrainer = userRole.equals("Entrenador", ignoreCase = true)
         if (currentUser != null && !currentUser.isEmailVerified && !isGoogleUser) {
             val email = currentUser.email.orEmpty()
             FirebaseAuth.getInstance().signOut()
             navController.navigate("verify_email/${Uri.encode(email)}") {
                 popUpTo(0) { inclusive = true }
             }
+        } else if (currentUser != null && isTrainer) {
+            navController.navigate("trainerMain") {
+                popUpTo(0) { inclusive = true }
+            }
         } else if (currentUser != null && isAthlete) {
             val destination = runCatching {
-                if (authService.hasCompletedWelcome(currentUser.uid)) "athleteMain" else "welcome"
+                if (authService.hasCompletedWelcome(currentUser.uid)) {
+                    "athleteMain"
+                } else {
+                    "welcome"
+                }
             }.getOrDefault("login")
-            if (destination == "login") FirebaseAuth.getInstance().signOut()
+
+            if (destination == "login") {
+                FirebaseAuth.getInstance().signOut()
+            }
+
             navController.navigate(destination) {
                 popUpTo(0) { inclusive = true }
             }

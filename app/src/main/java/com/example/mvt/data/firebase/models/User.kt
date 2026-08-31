@@ -19,4 +19,9 @@ data class User(
     val genero: String? = null,
     val identificacion: String? = null,
     val pais: String? = null,
-    )
+    val deporte: String? = null,
+    val especialidad: String? = null,
+    val rol: String? = null,
+    val formularioBienvenida: Boolean? = null,
+    val pasoBienvenida: Int? = null
+)

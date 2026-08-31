@@ -4,8 +4,14 @@ import android.net.Uri
 import android.util.Log
 import com.example.mvt.data.firebase.models.User
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.storage.FirebaseStorage
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class UserService {
@@ -14,19 +20,72 @@ class UserService {
     private val storage = FirebaseStorage.getInstance()
     private val auth    = FirebaseAuth.getInstance()
 
-    // === Obtener usuario actual ===
+    private fun mapSnapshotToUser(snapshot: DataSnapshot): User? {
+        if (!snapshot.exists()) return null
+        return try {
+            User(
+                UserID = snapshot.child("UserID").value?.toString()?.toIntOrNull(),
+                nombres = snapshot.child("nombres").value?.toString(),
+                apellidos = snapshot.child("apellidos").value?.toString(),
+                email = snapshot.child("email").value?.toString(),
+                ciudadActual = snapshot.child("ciudadActual").value?.toString() ?: snapshot.child("ciudad").value?.toString(),
+                direccion = snapshot.child("direccion").value?.toString(),
+                estado = snapshot.child("estado").value?.toString(),
+                estrellas = snapshot.child("estrellas").value?.toString()?.toIntOrNull(),
+                fecha_nacimiento = snapshot.child("fecha_nacimiento").value?.toString(),
+                fecha_registro = snapshot.child("fecha_registro").value?.toString()?.toLongOrNull(),
+                descripcion = snapshot.child("descripcion").value?.toString(),
+                NotiR = snapshot.child("NotiR").value as? Boolean,
+                foto_url = snapshot.child("foto_url").value?.toString(),
+                nameUser = snapshot.child("nameUser").value?.toString(),
+                telefono = snapshot.child("telefono").value?.toString(),
+                genero = snapshot.child("genero").value?.toString(),
+                identificacion = snapshot.child("identificacion").value?.toString(),
+                pais = snapshot.child("pais").value?.toString(),
+                deporte = snapshot.child("deporte").value?.toString(),
+                especialidad = snapshot.child("especialidad").value?.toString(),
+                rol = snapshot.child("rol").value?.toString(),
+                formularioBienvenida = snapshot.child("formularioBienvenida").value?.toString() == "true" || snapshot.child("formularioBienvenida").value?.toString() == "2",
+                pasoBienvenida = snapshot.child("pasoBienvenida").value?.toString()?.toIntOrNull()
+            )
+        } catch (e: Exception) {
+            Log.e("UserService", "Error mapeando usuario", e)
+            null
+        }
+    }
+
+    fun observeCurrentUser(): Flow<User?> = callbackFlow {
+        val uid = auth.currentUser?.uid
+        if (uid == null) {
+            trySend(null)
+            close()
+            return@callbackFlow
+        }
+
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                trySend(mapSnapshotToUser(snapshot))
+            }
+            override fun onCancelled(error: DatabaseError) {
+                close(error.toException())
+            }
+        }
+
+        db.child(uid).addValueEventListener(listener)
+        awaitClose { db.child(uid).removeEventListener(listener) }
+    }
+
     suspend fun getCurrentUser(): User? {
         val uid = auth.currentUser?.uid ?: return null
         return try {
             val snapshot = db.child(uid).get().await()
-            snapshot.getValue(User::class.java)
+            mapSnapshotToUser(snapshot)
         } catch (e: Exception) {
             Log.e("UserService", "Error al obtener usuario", e)
             null
         }
     }
 
-    // === Actualizar campos del perfil ===
     suspend fun updateUser(
         nombres:      String,
         apellidos:    String,
@@ -48,24 +107,20 @@ class UserService {
                 "identificacion" to documento
             )
             db.child(uid).updateChildren(updates).await()
-            Log.d("UserService", "Usuario actualizado correctamente")
         } catch (e: Exception) {
             Log.e("UserService", "Error al actualizar usuario", e)
             throw e
         }
     }
 
-    // === Subir foto de perfil ===
     suspend fun uploadProfilePhoto(uri: Uri): String {
         val uid = auth.currentUser?.uid
             ?: throw Exception("Usuario no autenticado")
         try {
-            val storageRef = storage
-                .getReference("profile_photos/$uid.jpg")
+            val storageRef = storage.getReference("profile_photos/$uid.jpg")
             storageRef.putFile(uri).await()
             val downloadUrl = storageRef.downloadUrl.await().toString()
             db.child(uid).child("foto_url").setValue(downloadUrl).await()
-            Log.d("UserService", "Foto actualizada correctamente")
             return downloadUrl
         } catch (e: Exception) {
             Log.e("UserService", "Error al subir foto", e)

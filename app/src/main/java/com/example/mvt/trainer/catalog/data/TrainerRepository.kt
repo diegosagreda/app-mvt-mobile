@@ -1,12 +1,12 @@
-package com.example.mvt.trainer.data
+package com.example.mvt.trainer.catalog.data
 
-import com.example.mvt.trainer.model.AssignmentStatus
-import com.example.mvt.trainer.model.AthleteRatingProfile
-import com.example.mvt.trainer.model.TrainerAssignment
-import com.example.mvt.trainer.model.TrainerProfile
-import com.example.mvt.trainer.model.TrainerRating
-import com.example.mvt.trainer.model.TrainerRatingsState
-import com.example.mvt.trainer.model.TrainerScreenState
+import com.example.mvt.trainer.catalog.model.AssignmentStatus
+import com.example.mvt.trainer.catalog.model.AthleteRatingProfile
+import com.example.mvt.trainer.catalog.model.TrainerAssignment
+import com.example.mvt.trainer.catalog.model.TrainerProfile
+import com.example.mvt.trainer.catalog.model.TrainerRating
+import com.example.mvt.trainer.catalog.model.TrainerRatingsState
+import com.example.mvt.trainer.catalog.model.TrainerScreenState
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
@@ -16,7 +16,6 @@ import com.google.firebase.database.ValueEventListener
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.ListenerRegistration
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
