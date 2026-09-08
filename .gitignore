@@ -17,3 +17,14 @@ node_modules/
 package.json
 package-lock.json
 app/google-services.json
+/google-services.json
+google-services.json
+GoogleService-Info.plist
+*.jks
+*.keystore
+key.properties
+.env
+.env.*
+serviceAccount*.json
+credentials*.json
+secrets*.json
