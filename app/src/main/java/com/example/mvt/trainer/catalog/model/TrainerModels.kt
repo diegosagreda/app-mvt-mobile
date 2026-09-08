@@ -1,4 +1,4 @@
-package com.example.mvt.trainer.model
+package com.example.mvt.trainer.catalog.model
 
 enum class AssignmentStatus(val wireValue: String) {
     PENDING("Pendiente"),

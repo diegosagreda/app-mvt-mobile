@@ -69,11 +69,11 @@ import coil.compose.AsyncImage
 import com.example.mvt.R
 import com.example.mvt.data.firebase.models.Routine
 import com.example.mvt.goals.model.SportGoal
-import com.example.mvt.trainer.ui.CompactDetailGrid
-import com.example.mvt.trainer.ui.Detail
-import com.example.mvt.trainer.ui.ExpandableDetail
-import com.example.mvt.trainer.ui.InlineDetail
-import com.example.mvt.trainer.ui.SectionCard
+import com.example.mvt.trainer.catalog.ui.CompactDetailGrid
+import com.example.mvt.trainer.catalog.ui.Detail
+import com.example.mvt.trainer.catalog.ui.ExpandableDetail
+import com.example.mvt.trainer.catalog.ui.InlineDetail
+import com.example.mvt.trainer.catalog.ui.SectionCard
 import com.example.mvt.ui.components.EmptyRoutineDayCard
 import com.example.mvt.ui.components.FormErrorNotification
 import com.example.mvt.ui.components.FormFieldShape

@@ -1,4 +1,4 @@
-package com.example.mvt.trainer.ui
+package com.example.mvt.trainer.catalog.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -11,6 +11,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +26,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Badge
-import androidx.compose.material.icons.filled.Cake
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ErrorOutline
@@ -45,7 +45,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -69,19 +68,19 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import coil.compose.AsyncImage
 import com.example.mvt.R
-import com.example.mvt.trainer.model.AssignmentStatus
-import com.example.mvt.trainer.model.TrainerProfile
-import com.example.mvt.trainer.model.TrainerRating
-import com.example.mvt.trainer.model.TrainerRatingsState
-import com.example.mvt.trainer.model.TrainerScreenState
-import com.example.mvt.trainer.viewmodel.RatingSubmissionState
-import com.example.mvt.trainer.viewmodel.TrainerViewModel
+import com.example.mvt.trainer.catalog.model.AssignmentStatus
+import com.example.mvt.trainer.catalog.model.TrainerProfile
+import com.example.mvt.trainer.catalog.model.TrainerRating
+import com.example.mvt.trainer.catalog.model.TrainerRatingsState
+import com.example.mvt.trainer.catalog.model.TrainerScreenState
+import com.example.mvt.trainer.catalog.viewmodel.RatingSubmissionState
+import com.example.mvt.trainer.catalog.viewmodel.TrainerViewModel
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
 import com.example.mvt.ui.theme.AppPrimarySoft
-import com.example.mvt.ui.theme.AppSuccess
 import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.AppSurfaceAlt
 import com.example.mvt.ui.theme.AppTextPrimary
@@ -169,7 +168,7 @@ private fun AssignedContent(
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(8.dp, 8.dp, 8.dp, 28.dp),
+        contentPadding = PaddingValues(8.dp, 8.dp, 8.dp, 28.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp)
     ) {
         item { ScreenTitle("Tu entrenador", "Acompañamiento y perfil profesional", onBack) }
@@ -590,7 +589,7 @@ private fun RatingDialog(
 
 @Composable
 internal fun PhotoDialog(trainer: TrainerProfile, onDismiss: () -> Unit) {
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+    Dialog(onDismissRequest = onDismiss) {
         Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(AppSurface)) {
             AsyncImage(
                 model = trainer.fotoUrl.ifBlank { R.drawable.placeholder },
