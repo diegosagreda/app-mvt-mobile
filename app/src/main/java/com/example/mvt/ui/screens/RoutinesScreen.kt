@@ -1851,6 +1851,8 @@ private fun StatisticsDonut(
     total: Int,
     modifier: Modifier = Modifier
 ) {
+    val trackColor = AppSurfaceAlt
+
     Canvas(modifier = modifier) {
         val stroke = Stroke(width = 13.dp.toPx(), cap = StrokeCap.Butt)
         val diameter = size.minDimension - stroke.width
@@ -1858,7 +1860,7 @@ private fun StatisticsDonut(
         val arcSize = Size(diameter, diameter)
 
         drawArc(
-            color = AppSurfaceAlt,
+            color = trackColor,
             startAngle = -90f,
             sweepAngle = 360f,
             useCenter = false,
@@ -2866,6 +2868,7 @@ private fun difficultyFor(intensity: Int): Pair<String, Color> {
     }
 }
 
+@Composable
 private fun heatmapColor(insight: DayPerformance): Color {
     return when (insight.status) {
         PerformanceStatus.COMPLETED -> CompletedGreen.copy(alpha = 0.78f)

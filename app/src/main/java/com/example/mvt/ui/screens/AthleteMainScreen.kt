@@ -97,7 +97,10 @@ import com.example.mvt.ui.screens.settings.ConnectionScreen
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
 import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppSurfaceAlt
+import com.example.mvt.ui.theme.AppTextPrimary
 import com.example.mvt.ui.theme.AppTextSecondary
+import com.example.mvt.ui.theme.AppThemeMode
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.utils.AppForegroundMonitor
 import com.example.mvt.utils.AthleteNotificationBus
@@ -151,6 +154,8 @@ import kotlin.math.roundToInt
 fun AthleteMainScreen(
     navController: NavController,
     userViewModel: UserViewModel,
+    themeMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit,
     onOpenChat: () -> Unit = {},
     unreadMessagesCount: Int = 0
 ) {
@@ -343,6 +348,7 @@ fun AthleteMainScreen(
                         AthleteHomeDashboard(
                             athleteName = user?.nombres ?: "Atleta",
                             athleteId = currentAthleteId,
+                            themeMode = themeMode,
                             routineRepository = routineRepository,
                             coachIntelligenceService = coachIntelligenceService,
                             onOpenRoutine = { routine ->
@@ -473,6 +479,8 @@ fun AthleteMainScreen(
                     composable("account_settings") {
                         AccountSettingsScreen(
                             showConnection = true,
+                            themeMode = themeMode,
+                            onThemeModeChange = onThemeModeChange,
                             onNavigate = { route ->
                                 innerNavController.navigate(route) {
                                     launchSingleTop = true
@@ -751,8 +759,8 @@ private fun AthleteBottomNavigationBar(
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
+                            selectedIconColor = PrimaryBlue,
+                            selectedTextColor = PrimaryBlue,
                             unselectedIconColor = AppTextSecondary,
                             unselectedTextColor = AppTextSecondary,
                             indicatorColor = PrimaryBlue.copy(alpha = 0.22f)
@@ -827,7 +835,7 @@ private fun PlanHubScreen(
         item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
                 text = "Plan",
-                color = Color.White,
+                color = AppTextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
@@ -904,7 +912,7 @@ private fun PlanHubCard(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = option.title,
-                    color = Color.White,
+                    color = AppTextPrimary,
                     fontSize = 15.sp,
                     lineHeight = 18.sp,
                     fontWeight = FontWeight.Black,
@@ -1007,7 +1015,7 @@ private fun PersonalDataHubScreen(
         item(span = { GridItemSpan(maxLineSpan) }) {
             Text(
                 text = "Datos personales",
-                color = Color.White,
+                color = AppTextPrimary,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
@@ -1074,7 +1082,7 @@ private fun PersonalDataOptionCard(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = option.title,
-                    color = Color.White,
+                    color = AppTextPrimary,
                     fontSize = 15.sp,
                     lineHeight = 18.sp,
                     fontWeight = FontWeight.Black,
@@ -1100,6 +1108,7 @@ private fun PersonalDataOptionCard(
 private fun AthleteHomeDashboard(
     athleteName: String,
     athleteId: String,
+    themeMode: AppThemeMode,
     routineRepository: RoutineRepository,
     coachIntelligenceService: CoachIntelligenceService,
     onOpenRoutine: (Routine) -> Unit
@@ -1244,7 +1253,8 @@ private fun AthleteHomeDashboard(
             CoachInsightCard(
                 isLoading = coachAnalysisLoading,
                 analysis = coachAnalysis,
-                errorMessage = coachAnalysisError
+                errorMessage = coachAnalysisError,
+                isDarkTheme = themeMode == AppThemeMode.DARK
             )
         }
         item {
@@ -1288,7 +1298,7 @@ private fun HomeHeader(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = "$greeting, ${athleteName.ifBlank { "Atleta" }}",
-                    color = Color.White,
+                    color = AppTextPrimary,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
@@ -1324,12 +1334,12 @@ private fun HomeCurrentDateChip() {
             Icon(
                 imageVector = Icons.Default.CalendarMonth,
                 contentDescription = null,
-                tint = Color(0xFF8EC5FF),
+                tint = PrimaryBlue,
                 modifier = Modifier.size(15.dp)
             )
             Text(
                 text = currentDate,
-                color = Color(0xFFBFDFFF),
+                color = PrimaryBlue,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -1396,7 +1406,7 @@ private fun HomeWeatherSummary(
                 Column(verticalArrangement = Arrangement.spacedBy(1.dp)) {
                     Text(
                         text = city,
-                        color = Color.White,
+                        color = AppTextPrimary,
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Bold,
                         maxLines = 1,
@@ -1423,12 +1433,12 @@ private fun HomeWeatherSummary(
                         Icon(
                             weatherIcon,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = PrimaryBlue,
                             modifier = Modifier.size(20.dp)
                         )
                         Text(
                             text = temperature,
-                            color = Color.White,
+                            color = AppTextPrimary,
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             maxLines = 1
@@ -1548,7 +1558,7 @@ private fun TodayRoutineMessage(
         ) {
             Text(
                 text = title,
-                color = Color.White,
+                color = AppTextPrimary,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -1610,7 +1620,7 @@ private fun TodayRoutineContent(
         }
         Text(
             routine.titulo.ifBlank { "Rutina programada" },
-            color = Color.White,
+            color = AppTextPrimary,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -1623,7 +1633,7 @@ private fun TodayRoutineContent(
 
     Text(
         text = "Objetivo",
-        color = Color.White,
+        color = AppTextPrimary,
         fontSize = 12.sp,
         fontWeight = FontWeight.Bold
     )
@@ -1690,7 +1700,7 @@ private fun TodayRoutineActionButton(onClick: () -> Unit) {
     ) {
         Text(
             text = "Ir a rutina",
-            color = Color(0xFF8EC5FF),
+            color = PrimaryBlue,
             fontSize = 11.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -1715,7 +1725,7 @@ private fun TodayRoutineMetricChip(
     ) {
         Text(
             value,
-            color = Color.White,
+            color = AppTextPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -1729,7 +1739,7 @@ private fun TodayRoutineMetricChip(
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = Color(0xFF8EC5FF),
+                tint = PrimaryBlue,
                 modifier = Modifier.size(12.dp)
             )
             Text(
@@ -2020,7 +2030,7 @@ private fun LastActivityHeader(routine: Routine?) {
             Icon(Icons.Default.CheckCircle, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
             Text(
                 "Ultima actividad",
-                color = Color.White,
+                color = AppTextPrimary,
                 fontSize = 16.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -2042,7 +2052,7 @@ private fun PreviousActivityContent(routine: Routine) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text(
             routine.titulo.ifBlank { "Rutina programada" },
-            color = Color.White,
+            color = AppTextPrimary,
             fontSize = 17.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,
@@ -2070,14 +2080,25 @@ private fun PreviousActivityContent(routine: Routine) {
 private fun CoachInsightCard(
     isLoading: Boolean,
     analysis: WeeklyRoutineAnalysis?,
-    errorMessage: String?
+    errorMessage: String?,
+    isDarkTheme: Boolean
 ) {
-    HomePremiumCard(
-        brush = Brush.linearGradient(
+    val coachCardBrush = if (isDarkTheme) {
+        Brush.linearGradient(
             listOf(Color(0xFF101824), Color(0xFF1C3147))
         )
+    } else {
+        null
+    }
+    val coachTitleColor = if (isDarkTheme) Color.White else AppTextPrimary
+
+    HomePremiumCard(
+        brush = coachCardBrush
     ) {
-        CoachInsightHeader(analysis = analysis)
+        CoachInsightHeader(
+            analysis = analysis,
+            titleColor = coachTitleColor
+        )
         Spacer(Modifier.height(12.dp))
 
         when {
@@ -2085,24 +2106,31 @@ private fun CoachInsightCard(
                 icon = Icons.Default.Cloud,
                 title = "Analizando tu semana",
                 message = "Estamos preparando una lectura breve para tu entrenamiento.",
-                accent = PrimaryBlue
+                accent = PrimaryBlue,
+                titleColor = coachTitleColor
             )
 
             errorMessage != null -> HomeSectionMessage(
                 icon = Icons.Default.Info,
                 title = "Coach no disponible",
                 message = errorMessage,
-                accent = Color(0xFFFFC857)
+                accent = Color(0xFFFFC857),
+                titleColor = coachTitleColor
             )
 
             analysis == null || !analysis.hasCoachInsightContent() -> HomeSectionMessage(
                 icon = Icons.Default.Analytics,
                 title = "Sin análisis todavía",
                 message = "Cuando se genere tu análisis semanal, aparecerá aquí.",
-                accent = Color(0xFF62D9A8)
+                accent = Color(0xFF62D9A8),
+                titleColor = coachTitleColor
             )
 
-            else -> CoachInsightContent(analysis = analysis)
+            else -> CoachInsightContent(
+                analysis = analysis,
+                isDarkTheme = isDarkTheme,
+                primaryTextColor = coachTitleColor
+            )
         }
     }
 }
@@ -2151,7 +2179,10 @@ private fun String.coachStatusColor(): Color {
 }
 
 @Composable
-private fun CoachInsightHeader(analysis: WeeklyRoutineAnalysis?) {
+private fun CoachInsightHeader(
+    analysis: WeeklyRoutineAnalysis?,
+    titleColor: Color
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -2173,7 +2204,7 @@ private fun CoachInsightHeader(analysis: WeeklyRoutineAnalysis?) {
         }
         Text(
             text = "Tu Estado",
-            color = Color.White,
+            color = titleColor,
             fontSize = 15.sp,
             lineHeight = 19.sp,
             fontWeight = FontWeight.Black,
@@ -2186,20 +2217,28 @@ private fun CoachInsightHeader(analysis: WeeklyRoutineAnalysis?) {
 }
 
 @Composable
-private fun CoachInsightContent(analysis: WeeklyRoutineAnalysis) {
+private fun CoachInsightContent(
+    analysis: WeeklyRoutineAnalysis,
+    isDarkTheme: Boolean,
+    primaryTextColor: Color
+) {
     val metrics = analysis.metricas
     val focus = analysis.foco_hoy.ifBlank { analysis.resumen }
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = analysis.resumen.ifBlank { "Tu coach ya tiene una lectura de esta semana." },
-            color = Color.White,
+            color = primaryTextColor,
             fontSize = 14.sp,
             lineHeight = 19.sp,
             fontWeight = FontWeight.Bold
         )
 
-        CoachFocusPanel(text = focus)
+        CoachFocusPanel(
+            text = focus,
+            isDarkTheme = isDarkTheme,
+            textColor = primaryTextColor
+        )
 
         if (metrics != null) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
@@ -2226,12 +2265,14 @@ private fun CoachInsightContent(analysis: WeeklyRoutineAnalysis) {
                 title = "Mejora",
                 text = analysis.mejora.ifBlank { "Mantén técnica y control de intensidad." },
                 accent = Color(0xFFFFC857),
+                isDarkTheme = isDarkTheme,
                 modifier = Modifier.weight(1f)
             )
             CoachAdviceChip(
                 title = "Recupera",
                 text = analysis.descanso.ifBlank { "Prioriza hidratación, movilidad y sueño." },
                 accent = Color(0xFF62D9A8),
+                isDarkTheme = isDarkTheme,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -2239,7 +2280,13 @@ private fun CoachInsightContent(analysis: WeeklyRoutineAnalysis) {
 }
 
 @Composable
-private fun CoachFocusPanel(text: String) {
+private fun CoachFocusPanel(
+    text: String,
+    isDarkTheme: Boolean,
+    textColor: Color
+) {
+    val focusIconColor = if (isDarkTheme) Color(0xFF8EC5FF) else PrimaryBlue
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -2253,12 +2300,12 @@ private fun CoachFocusPanel(text: String) {
         Icon(
             Icons.Default.SportsScore,
             contentDescription = null,
-            tint = Color(0xFF8EC5FF),
+            tint = focusIconColor,
             modifier = Modifier.size(18.dp)
         )
         Text(
             text = text,
-            color = Color.White,
+            color = textColor,
             fontSize = 13.sp,
             lineHeight = 18.sp,
             fontWeight = FontWeight.SemiBold,
@@ -2272,13 +2319,17 @@ private fun CoachAdviceChip(
     title: String,
     text: String,
     accent: Color,
+    isDarkTheme: Boolean,
     modifier: Modifier = Modifier
 ) {
+    val containerColor = if (isDarkTheme) Color.White.copy(alpha = 0.06f) else AppSurfaceAlt
+    val borderColor = if (isDarkTheme) Color.White.copy(alpha = 0.08f) else AppBorder
+
     Column(
         modifier = modifier
             .clip(RoundedCornerShape(14.dp))
-            .background(Color.White.copy(alpha = 0.06f))
-            .border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(14.dp))
+            .background(containerColor)
+            .border(1.dp, borderColor, RoundedCornerShape(14.dp))
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp)
     ) {
@@ -2366,7 +2417,7 @@ private fun NextRoutineContent(routine: Routine) {
             )
             Text(
                 routine.titulo.ifBlank { "Rutina programada" },
-                color = Color.White,
+                color = AppTextPrimary,
                 fontSize = 17.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -2396,7 +2447,8 @@ private fun HomeSectionMessage(
     icon: ImageVector,
     title: String,
     message: String,
-    accent: Color
+    accent: Color,
+    titleColor: Color = AppTextPrimary
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -2413,7 +2465,7 @@ private fun HomeSectionMessage(
             Icon(icon, contentDescription = null, tint = accent, modifier = Modifier.size(22.dp))
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(title, color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+            Text(title, color = titleColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
             Text(message, color = AppTextSecondary, fontSize = 12.sp, lineHeight = 16.sp)
         }
     }
@@ -2441,7 +2493,7 @@ private fun HomePremiumCard(
 private fun SectionTitle(icon: ImageVector, title: String) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Icon(icon, contentDescription = null, tint = PrimaryBlue, modifier = Modifier.size(20.dp))
-        Text(title, color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        Text(title, color = AppTextPrimary, fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
 
@@ -2472,7 +2524,7 @@ private fun MetricChip(value: String, label: String, modifier: Modifier = Modifi
     ) {
         Text(
             value,
-            color = Color.White,
+            color = AppTextPrimary,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             maxLines = 1,

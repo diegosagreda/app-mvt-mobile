@@ -153,6 +153,7 @@ private fun EstadoChip(
 // ================================================================
 //  COLORES OFICIALES DE ESTADO
 // ================================================================
+@Composable
 private fun getEstadoColor(estado: String): Color {
     return when (estado) {
         "Realizada"    -> Color(0xFF77DD77)

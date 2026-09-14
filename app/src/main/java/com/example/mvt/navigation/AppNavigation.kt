@@ -30,6 +30,7 @@ import com.example.mvt.ui.screens.auth.EmailVerificationScreen
 import com.example.mvt.welcome.ui.WelcomeScreen
 import com.example.mvt.welcome.viewmodel.WelcomeViewModel
 import com.example.mvt.utils.AppForegroundMonitor
+import com.example.mvt.ui.theme.AppThemeMode
 import com.example.mvt.ui.viewmodels.UserViewModel
 import com.example.mvt.utils.ChatNotificationBus
 import com.example.mvt.utils.NotificationHelper
@@ -52,7 +53,10 @@ import com.google.firebase.storage.FirebaseStorage
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun AppNavigation() {
+fun AppNavigation(
+    themeMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit
+) {
     val tag = "MVT_AppNavigation"
     val navController: NavHostController = rememberNavController()
     val context = LocalContext.current
@@ -236,6 +240,8 @@ fun AppNavigation() {
                 AthleteMainScreen(
                     navController = navController,
                     userViewModel = userViewModel,
+                    themeMode = themeMode,
+                    onThemeModeChange = onThemeModeChange,
                     onOpenChat = {
                         Log.d(tag, "onOpenChat clicked athleteId=$athleteId trainerId=$trainerId currentRoute=$currentRoute")
                         navController.navigate("athleteChat") {
@@ -249,7 +255,9 @@ fun AppNavigation() {
             composable("trainerMain") {
                 TrainerMainScreen(
                     navController = navController,
-                    userViewModel = userViewModel
+                    userViewModel = userViewModel,
+                    themeMode = themeMode,
+                    onThemeModeChange = onThemeModeChange
                 )
             }
 

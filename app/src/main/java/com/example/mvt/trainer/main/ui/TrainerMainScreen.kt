@@ -40,7 +40,9 @@ import com.example.mvt.ui.viewmodels.UserViewModel
 @Composable
 fun TrainerMainScreen(
     navController: NavController, // Root NavController
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    themeMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit
 ) {
     val trainerNavController = rememberNavController()
     val backStackEntry by trainerNavController.currentBackStackEntryAsState()
@@ -92,6 +94,8 @@ fun TrainerMainScreen(
         TrainerNavGraph(
             navController = trainerNavController,
             rootNavController = navController as NavHostController,
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
@@ -113,7 +117,7 @@ private fun TrainerHeader(
                 Text(
                     text = "Entrenador",
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White,
+                    color = AppTextPrimary,
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -129,7 +133,7 @@ private fun TrainerHeader(
                     Icon(
                         imageVector = Icons.Outlined.Email,
                         contentDescription = "Mensajes",
-                        tint = Color.White,
+                        tint = AppTextPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -137,7 +141,7 @@ private fun TrainerHeader(
                     Icon(
                         imageVector = Icons.Outlined.Notifications,
                         contentDescription = "Notificaciones",
-                        tint = Color.White,
+                        tint = AppTextPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -255,8 +259,8 @@ private fun RowScope.TrainerNavigationItem(
             }
         },
         colors = NavigationBarItemDefaults.colors(
-            selectedIconColor = Color.White,
-            selectedTextColor = Color.White,
+            selectedIconColor = PrimaryBlue,
+            selectedTextColor = PrimaryBlue,
             unselectedIconColor = AppTextSecondary,
             unselectedTextColor = AppTextSecondary,
             indicatorColor = PrimaryBlue.copy(alpha = 0.22f)

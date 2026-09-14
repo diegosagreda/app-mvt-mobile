@@ -13,12 +13,15 @@ import com.example.mvt.trainer.profile.ui.ProfileScreen
 import com.example.mvt.ui.screens.AccountSettingsScreen
 import com.example.mvt.ui.screens.UnderConstructionDestination
 import com.example.mvt.ui.screens.UnderConstructionScreen
+import com.example.mvt.ui.theme.AppThemeMode
 import com.google.firebase.auth.FirebaseAuth
 
 @Composable
 fun TrainerNavGraph(
     navController: NavHostController,
     rootNavController: NavHostController, // Para el logout principal
+    themeMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     NavHost(
@@ -49,6 +52,8 @@ fun TrainerNavGraph(
         composable(TrainerDestination.SETTINGS) {
             AccountSettingsScreen(
                 showConnection = false, // Ocultar Conexión para Entrenador
+                themeMode = themeMode,
+                onThemeModeChange = onThemeModeChange,
                 onNavigate = { route ->
                     navController.navigate(route) {
                         launchSingleTop = true

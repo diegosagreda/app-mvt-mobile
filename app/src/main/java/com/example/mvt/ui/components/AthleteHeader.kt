@@ -38,6 +38,7 @@ import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
 import com.example.mvt.ui.theme.AppSuccess
 import com.example.mvt.ui.theme.AppSurface
+import com.example.mvt.ui.theme.AppTextPrimary
 import com.example.mvt.ui.theme.AppTextSecondary
 
 private val HeaderBadgeRed = Color(0xFFE64848)
@@ -132,7 +133,7 @@ private fun NotificationActionButton(
         Icon(
             Icons.Outlined.Notifications,
             contentDescription = "Notificaciones",
-            tint = Color.White,
+            tint = AppTextPrimary,
             modifier = Modifier.size(HeaderMainIconSize)
         )
 
@@ -181,7 +182,7 @@ private fun MessageActionButton(
         Icon(
             Icons.Outlined.Email,
             contentDescription = "Mensajes",
-            tint = Color.White,
+            tint = AppTextPrimary,
             modifier = Modifier.size(HeaderMainIconSize)
         )
 

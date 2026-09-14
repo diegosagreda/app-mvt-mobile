@@ -35,9 +35,17 @@ data class AccountSettingsOption(
     val destructive: Boolean = false
 )
 
+private data class ThemeModeOption(
+    val mode: AppThemeMode,
+    val title: String,
+    val icon: ImageVector
+)
+
 @Composable
 fun AccountSettingsScreen(
     showConnection: Boolean = true,
+    themeMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit,
     onNavigate: (String) -> Unit,
     onLogout: () -> Unit
 ) {
@@ -83,7 +91,7 @@ fun AccountSettingsScreen(
         item {
             Text(
                 text = "Cuenta y configuración",
-                color = Color.White,
+                color = AppTextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
                 modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
@@ -97,6 +105,13 @@ fun AccountSettingsScreen(
                 fontSize = 13.sp,
                 lineHeight = 18.sp,
                 modifier = Modifier.padding(bottom = 4.dp)
+            )
+        }
+
+        item {
+            AppearanceModeCard(
+                selectedMode = themeMode,
+                onThemeModeChange = onThemeModeChange
             )
         }
 
@@ -118,7 +133,7 @@ private fun AccountSettingsRow(
     option: AccountSettingsOption,
     onClick: () -> Unit
 ) {
-    val titleColor = if (option.destructive) option.accent else Color.White
+    val titleColor = if (option.destructive) option.accent else AppTextPrimary
 
     Surface(
         modifier = Modifier
@@ -175,6 +190,135 @@ private fun AccountSettingsRow(
                 contentDescription = null,
                 tint = AppTextSecondary,
                 modifier = Modifier.size(18.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun AppearanceModeCard(
+    selectedMode: AppThemeMode,
+    onThemeModeChange: (AppThemeMode) -> Unit
+) {
+    val options = listOf(
+        ThemeModeOption(
+            mode = AppThemeMode.LIGHT,
+            title = "Claro",
+            icon = Icons.Default.WbSunny
+        ),
+        ThemeModeOption(
+            mode = AppThemeMode.DARK,
+            title = "Oscuro",
+            icon = Icons.Default.DarkMode
+        )
+    )
+
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = AppSurface,
+        shape = RoundedCornerShape(18.dp),
+        border = BorderStroke(1.dp, AppBorder),
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(42.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(PrimaryBlue.copy(alpha = 0.14f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Palette,
+                        contentDescription = null,
+                        tint = PrimaryBlue,
+                        modifier = Modifier.size(22.dp)
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                ) {
+                    Text(
+                        text = "Apariencia",
+                        color = AppTextPrimary,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Black
+                    )
+                    Text(
+                        text = "Elige cómo quieres ver la app",
+                        color = AppTextSecondary,
+                        fontSize = 12.sp
+                    )
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                options.forEach { option ->
+                    AppearanceModeChip(
+                        option = option,
+                        selected = selectedMode == option.mode,
+                        onClick = { onThemeModeChange(option.mode) },
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppearanceModeChip(
+    option: ThemeModeOption,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor = if (selected) PrimaryBlue else AppSurfaceAlt
+    val contentColor = if (selected) Color.White else AppTextPrimary
+
+    Surface(
+        modifier = modifier
+            .height(42.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
+        color = containerColor,
+        shape = RoundedCornerShape(14.dp),
+        border = BorderStroke(
+            width = 1.dp,
+            color = if (selected) PrimaryBlue else AppBorder
+        )
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = option.icon,
+                contentDescription = null,
+                tint = contentColor,
+                modifier = Modifier.size(17.dp)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            Text(
+                text = option.title,
+                color = contentColor,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }

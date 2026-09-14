@@ -1,6 +1,7 @@
 package com.example.mvt
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
@@ -10,10 +11,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import com.example.mvt.navigation.AppNavigation
 import com.example.mvt.utils.AthleteNotificationBus
 import com.example.mvt.utils.ChatNotificationBus
+import com.example.mvt.ui.theme.AppThemeMode
 import com.example.mvt.ui.theme.MVTTheme
 import com.example.mvt.utils.NotificationUtils
 import com.example.mvt.utils.StravaAuthRedirectBus
@@ -23,6 +29,8 @@ import com.google.firebase.auth.FirebaseAuth
 class MainActivity : ComponentActivity() {
     private companion object {
         const val TAG = "MVT_MainActivity"
+        const val THEME_PREFS = "mvt_theme_preferences"
+        const val KEY_THEME_MODE = "theme_mode"
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -44,8 +52,16 @@ class MainActivity : ComponentActivity() {
             WorkScheduler.scheduleDailyRoutineChecks(this, userId)
         }
         setContent {
-            MVTTheme {
-                AppNavigation()
+            var themeMode by remember { mutableStateOf(readThemeMode()) }
+
+            MVTTheme(themeMode = themeMode) {
+                AppNavigation(
+                    themeMode = themeMode,
+                    onThemeModeChange = { newThemeMode ->
+                        themeMode = newThemeMode
+                        saveThemeMode(newThemeMode)
+                    }
+                )
             }
         }
     }
@@ -130,5 +146,17 @@ class MainActivity : ComponentActivity() {
         if (shouldOpenNotifications) {
             AthleteNotificationBus.publish()
         }
+    }
+
+    private fun readThemeMode(): AppThemeMode {
+        val prefs = getSharedPreferences(THEME_PREFS, Context.MODE_PRIVATE)
+        return AppThemeMode.fromStorageKey(prefs.getString(KEY_THEME_MODE, null))
+    }
+
+    private fun saveThemeMode(themeMode: AppThemeMode) {
+        getSharedPreferences(THEME_PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putString(KEY_THEME_MODE, themeMode.storageKey)
+            .apply()
     }
 }
