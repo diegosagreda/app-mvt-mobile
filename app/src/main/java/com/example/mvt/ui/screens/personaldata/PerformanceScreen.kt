@@ -59,7 +59,8 @@ import com.example.mvt.ui.viewmodels.RhythmZone
 @Composable
 fun PerformanceScreen(
     navController: NavController,
-    viewModel: PerformanceViewModel
+    viewModel: PerformanceViewModel,
+    isEvolution: Boolean = false
 ) {
     val records         by viewModel.records.collectAsState()
     val uiState         by viewModel.uiState.collectAsState()
@@ -188,7 +189,8 @@ fun PerformanceScreen(
             // ==========================================
             PerformanceHeroHeader(
                 navController = navController,
-                latestVam     = if (currentVam.isNotBlank()) currentVam else latestRecord?.VAM ?: "--"
+                latestVam     = if (currentVam.isNotBlank()) currentVam else latestRecord?.VAM ?: "--",
+                isEvolution = isEvolution
             )
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -584,7 +586,8 @@ fun PerformanceScreen(
 @Composable
 private fun PerformanceHeroHeader(
     navController: NavController,
-    latestVam: String
+    latestVam: String,
+    isEvolution: Boolean
 ) {
     Box(
         modifier = Modifier
@@ -598,33 +601,35 @@ private fun PerformanceHeroHeader(
             .padding(start = 8.dp, end = 16.dp, top = 16.dp, bottom = 20.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                shape  = CircleShape,
-                color  = AppSurfaceAlt,
-                border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder)
-            ) {
-                IconButton(
-                    onClick = { navController.popBackStack() },
-                    modifier = Modifier.size(50.dp)
-                    ) {
-                    Icon(
-                        imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = "Volver",
-                        tint               = AppTextPrimary,
-                        modifier           = Modifier.size(24.dp)
-                    )
+            if (!isEvolution) {
+                Surface(
+                    shape  = CircleShape,
+                    color  = AppSurfaceAlt,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder)
+                ) {
+                    IconButton(
+                        onClick = { navController.popBackStack() },
+                        modifier = Modifier.size(50.dp)
+                        ) {
+                        Icon(
+                            imageVector        = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Volver",
+                            tint               = AppTextPrimary,
+                            modifier           = Modifier.size(24.dp)
+                        )
+                    }
                 }
+                Spacer(modifier = Modifier.width(12.dp))
             }
-            Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text       = "Información Rendimiento",
+                    text       = if (isEvolution) "Mi evolución" else "Información Rendimiento",
                     fontSize   = 22.sp,
                     fontWeight = FontWeight.Bold,
                     color      = AppTextPrimary
                 )
                 Text(
-                    text     = "Controla tu velocidad aeróbica máxima.",
+                    text     = if (isEvolution) "Sigue tu progreso y tus marcas personales." else "Controla tu velocidad aeróbica máxima.",
                     fontSize = 13.sp,
                     color    = AppTextSecondary
                 )

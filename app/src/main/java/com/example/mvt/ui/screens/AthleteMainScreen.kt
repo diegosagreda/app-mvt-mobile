@@ -8,10 +8,15 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.background
@@ -67,6 +72,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -101,6 +107,7 @@ import com.example.mvt.ui.theme.AppSurfaceAlt
 import com.example.mvt.ui.theme.AppTextPrimary
 import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.AppThemeMode
+import com.example.mvt.ui.theme.AthleteNavigationBlue
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.example.mvt.utils.AppForegroundMonitor
 import com.example.mvt.utils.AthleteNotificationBus
@@ -387,6 +394,13 @@ fun AthleteMainScreen(
                             contentMode = RoutinesContentMode.CALENDAR
                         )
                     }
+                    composable("evolution") {
+                        PerformanceScreen(
+                            navController = innerNavController,
+                            viewModel = performanceViewModel,
+                            isEvolution = true
+                        )
+                    }
                     composable("statistics") {
                         LaunchedEffect(currentAthleteId) {
                             if (currentAthleteId.isNotEmpty()) {
@@ -479,6 +493,7 @@ fun AthleteMainScreen(
                     composable("account_settings") {
                         AccountSettingsScreen(
                             showConnection = true,
+                            showAthleteSections = true,
                             themeMode = themeMode,
                             onThemeModeChange = onThemeModeChange,
                             onNavigate = { route ->
@@ -658,15 +673,15 @@ fun AthleteMainScreen(
 private data class AthleteBottomNavItem(
     val route: String,
     val label: String,
-    val icon: ImageVector
+    @androidx.annotation.DrawableRes val icon: Int
 )
 
 private val athleteBottomNavItems = listOf(
-    AthleteBottomNavItem("home", "Inicio", Icons.Default.Home),
-    AthleteBottomNavItem("routines", "Rutinas", Icons.Default.CalendarMonth),
-    AthleteBottomNavItem("statistics", "Estadisticas", Icons.Default.Analytics),
-    AthleteBottomNavItem("plan", "Plan", Icons.Default.Map),
-    AthleteBottomNavItem("profile", "Perfil", Icons.Default.Person)
+    AthleteBottomNavItem("home", "Resumen", R.drawable.ic_nav_summary),
+    AthleteBottomNavItem("routines", "Entrenamiento", R.drawable.ic_nav_training),
+    AthleteBottomNavItem("statistics", "Métricas", R.drawable.ic_nav_metrics),
+    AthleteBottomNavItem("evolution", "Mi evolución", R.drawable.ic_nav_evolution),
+    AthleteBottomNavItem("account_settings", "Configuración", R.drawable.ic_nav_settings)
 )
 
 private val mainAthleteRoutesWithLoader = setOf("home", "routines", "statistics")
@@ -718,54 +733,67 @@ private fun AthleteBottomNavigationBar(
     currentRoute: String?,
     onNavigate: (String) -> Unit
 ) {
-    Surface(
-        color = AppSurface,
-        tonalElevation = 10.dp,
-        shadowElevation = 14.dp,
-        border = BorderStroke(1.dp, AppBorder)
-    ) {
+    Surface(color = AppSurface, border = BorderStroke(0.5.dp, AppBorder)) {
         Column {
-            NavigationBar(
-                containerColor = AppSurface,
-                tonalElevation = 0.dp,
-                windowInsets = WindowInsets(0, 0, 0, 0),
-                modifier = Modifier.height(76.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp)
+                    .selectableGroup(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 athleteBottomNavItems.forEach { item ->
                     val selected = currentRoute == item.route ||
-                        (item.route == "plan" && currentRoute in planRoutes) ||
-                        (item.route == "profile" && currentRoute in personalDataRoutes)
-                    val available = item.route in setOf("home", "routines", "statistics", "plan", "profile")
-                    NavigationBarItem(
-                        selected = selected,
-                        enabled = available,
-                        onClick = { if (available) onNavigate(item.route) },
-                        icon = {
-                            Icon(
-                                imageVector = item.icon,
-                                contentDescription = item.label,
-                                modifier = Modifier.size(23.dp)
-                            )
-                        },
-                        label = {
-                            if (item.label.isNotBlank()) {
-                                Text(
-                                    text = item.label,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold
-                                )
-                            }
-                        },
-                        colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = PrimaryBlue,
-                            selectedTextColor = PrimaryBlue,
-                            unselectedIconColor = AppTextSecondary,
-                            unselectedTextColor = AppTextSecondary,
-                            indicatorColor = PrimaryBlue.copy(alpha = 0.22f)
-                        )
+                        (item.route == "account_settings" &&
+                            (currentRoute in planRoutes || currentRoute in personalDataRoutes ||
+                                currentRoute == "connection" ||
+                                currentRoute == UnderConstructionDestination.routeFor("help") ||
+                                currentRoute == UnderConstructionDestination.routeFor("about")))
+                    val indicatorColor by animateColorAsState(
+                        targetValue = AthleteNavigationBlue.copy(alpha = if (selected) 0.18f else 0f),
+                        animationSpec = tween(220),
+                        label = "navigationIndicator"
                     )
+                    val contentColor by animateColorAsState(
+                        targetValue = AthleteNavigationBlue.copy(alpha = if (selected) 1f else 0.8f),
+                        animationSpec = tween(220),
+                        label = "navigationContent"
+                    )
+                    val iconScale by animateFloatAsState(
+                        targetValue = if (selected) 1.08f else 1f,
+                        animationSpec = tween(220),
+                        label = "navigationIconScale"
+                    )
+                    Column(
+                        modifier = Modifier.weight(1f)
+                            .selectable(selected = selected, role = androidx.compose.ui.semantics.Role.Tab,
+                                onClick = { onNavigate(item.route) })
+                            .heightIn(min = 64.dp)
+                            .padding(vertical = 8.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 48.dp, height = 32.dp)
+                                .background(indicatorColor, RoundedCornerShape(16.dp)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                painter = painterResource(item.icon),
+                                contentDescription = null,
+                                tint = contentColor,
+                                modifier = Modifier.size(24.dp).scale(iconScale)
+                            )
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = item.label,
+                            color = contentColor,
+                            fontSize = 10.sp,
+                            lineHeight = 12.sp,
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium
+                        )
+                    }
                 }
             }
             Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.navigationBars))

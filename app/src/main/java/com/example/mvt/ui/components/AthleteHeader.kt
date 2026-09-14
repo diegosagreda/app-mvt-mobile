@@ -13,10 +13,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.outlined.Email
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,15 +33,14 @@ import com.example.mvt.R
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
 import com.example.mvt.ui.theme.AppSuccess
+import com.example.mvt.ui.theme.AthleteNavigationBlue
 import com.example.mvt.ui.theme.AppSurface
-import com.example.mvt.ui.theme.AppTextPrimary
-import com.example.mvt.ui.theme.AppTextSecondary
 
 private val HeaderBadgeRed = Color(0xFFE64848)
 private val HeaderBadgePulseRed = Color(0xFFE64848)
-private val HeaderActionSize = 34.dp
-private val HeaderActionSpacing = 8.dp
-private val HeaderMainIconSize = 26.4.dp
+private val HeaderActionSize = 48.dp
+private val HeaderActionSpacing = 0.dp
+private val HeaderMainIconSize = 24.dp
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -88,31 +83,22 @@ fun AthleteHeader(
                     onClick = onNotificationClick
                 )
 
-                Box(
-                    modifier = Modifier
-                        .size(HeaderActionSize)
-                        .clip(CircleShape)
-                        .background(AppSurface)
-                        .clickable { onProfileClick() },
-                    contentAlignment = Alignment.Center
+                IconButton(
+                    onClick = onProfileClick,
+                    modifier = Modifier.size(HeaderActionSize)
                 ) {
-                    if (profilePhotoUrl == null) {
-                        Image(
-                            painter = painterResource(id = R.drawable.iconografia_02_svg),
-                            contentDescription = "Foto de perfil",
-                            modifier = Modifier.size(32.dp)
-                        )
-                    } else {
-                        AsyncImage(
-                            model = profilePhotoUrl,
-                            contentDescription = "Foto de perfil",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(32.dp)
-                                .clip(CircleShape)
-                                .background(Color.Transparent)
-                        )
-                    }
+                    AsyncImage(
+                        model = profilePhotoUrl?.takeIf { it.isNotBlank() },
+                        placeholder = painterResource(R.drawable.iconografia_02_svg),
+                        error = painterResource(R.drawable.iconografia_02_svg),
+                        fallback = painterResource(R.drawable.iconografia_02_svg),
+                        contentDescription = "Foto de perfil",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(HeaderMainIconSize)
+                            .clip(CircleShape)
+                            .background(AppSurface)
+                    )
                 }
             }
         }
@@ -127,13 +113,13 @@ private fun NotificationActionButton(
     Box(
         modifier = Modifier
             .size(HeaderActionSize)
-            .clickable(onClick = onClick),
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            Icons.Outlined.Notifications,
+            painter = painterResource(R.drawable.ic_header_notifications),
             contentDescription = "Notificaciones",
-            tint = AppTextPrimary,
+            tint = AthleteNavigationBlue,
             modifier = Modifier.size(HeaderMainIconSize)
         )
 
@@ -141,7 +127,7 @@ private fun NotificationActionButton(
             CounterBadge(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 3.dp, y = (-2).dp),
+                    .offset(x = (-1).dp, y = 1.dp),
                 unreadCount = unreadCount
             )
         }
@@ -176,13 +162,13 @@ private fun MessageActionButton(
     Box(
         modifier = Modifier
             .size(HeaderActionSize)
-            .clickable(onClick = onClick),
+            .clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onClick),
         contentAlignment = Alignment.Center
     ) {
         Icon(
-            Icons.Outlined.Email,
+            painter = painterResource(R.drawable.ic_header_messages),
             contentDescription = "Mensajes",
-            tint = AppTextPrimary,
+            tint = AthleteNavigationBlue,
             modifier = Modifier.size(HeaderMainIconSize)
         )
 
@@ -190,7 +176,7 @@ private fun MessageActionButton(
             CounterBadge(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 3.dp, y = (-2).dp),
+                    .offset(x = (-1).dp, y = 1.dp),
                 unreadCount = unreadCount,
                 pulseScale = pulseScale,
                 pulseAlpha = pulseAlpha

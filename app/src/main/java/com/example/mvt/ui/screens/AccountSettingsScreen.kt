@@ -44,12 +44,27 @@ private data class ThemeModeOption(
 @Composable
 fun AccountSettingsScreen(
     showConnection: Boolean = true,
+    showAthleteSections: Boolean = false,
     themeMode: AppThemeMode,
     onThemeModeChange: (AppThemeMode) -> Unit,
     onNavigate: (String) -> Unit,
     onLogout: () -> Unit
 ) {
     val accountSettingsOptions = listOfNotNull(
+        if (showAthleteSections) AccountSettingsOption(
+            title = "Perfil",
+            subtitle = "Datos personales y deportivos",
+            route = "profile",
+            icon = Icons.Default.Person,
+            accent = PrimaryBlue
+        ) else null,
+        if (showAthleteSections) AccountSettingsOption(
+            title = "Plan",
+            subtitle = "Suscripción, pagos y entrenador",
+            route = "plan",
+            icon = Icons.Default.Map,
+            accent = PrimaryBlue
+        ) else null,
         if (showConnection) AccountSettingsOption(
             title = "Conexión",
             subtitle = "Sincronización y servicios externos",
@@ -90,7 +105,7 @@ fun AccountSettingsScreen(
     ) {
         item {
             Text(
-                text = "Cuenta y configuración",
+                text = "Configuración",
                 color = AppTextPrimary,
                 fontSize = 22.sp,
                 fontWeight = FontWeight.Black,
