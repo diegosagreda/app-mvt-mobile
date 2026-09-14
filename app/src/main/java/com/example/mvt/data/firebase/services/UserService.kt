@@ -42,7 +42,8 @@ class UserService {
                 telefono = snapshot.child("telefono").value?.toString(),
                 genero = snapshot.child("genero").value?.toString(),
                 identificacion = snapshot.child("identificacion").value?.toString(),
-                pais = snapshot.child("pais").value?.toString()
+                pais = snapshot.child("pais").value?.toString(),
+                tipo_documento = snapshot.child("tipo_documento").value?.toString()
             )
         } catch (e: Exception) {
             Log.e("UserService", "Error mapeando usuario manualmente", e)
@@ -94,11 +95,13 @@ class UserService {
         genero:       String,
         nacionalidad: String,
         alias:        String,
-        documento:    String
+        documento:    String,
+        tipoDocumento: String? = null,
+        fechaNacimiento: String? = null
     ) {
-        val uid = auth.currentUser?.uid ?: return
+        val uid = auth.currentUser?.uid ?: error("Usuario no autenticado")
         try {
-            val updates = mapOf(
+            val updates = mutableMapOf<String, Any>(
                 "nombres"       to nombres,
                 "apellidos"     to apellidos,
                 "telefono"      to telefono,
@@ -107,6 +110,8 @@ class UserService {
                 "nameUser"      to alias,
                 "identificacion" to documento
             )
+            tipoDocumento?.let { updates["tipo_documento"] = it }
+            fechaNacimiento?.let { updates["fecha_nacimiento"] = it }
             db.child(uid).updateChildren(updates).await()
         } catch (e: Exception) {
             Log.e("UserService", "Error al actualizar usuario", e)

@@ -19,7 +19,9 @@ class UserRepository {
         genero:       String,
         nacionalidad: String,
         alias:        String,
-        documento:    String
+        documento:    String,
+        tipoDocumento: String? = null,
+        fechaNacimiento: String? = null
     ) {
         service.updateUser(
             nombres      = nombres,
@@ -28,7 +30,9 @@ class UserRepository {
             genero       = genero,
             nacionalidad = nacionalidad,
             alias        = alias,
-            documento    = documento
+            documento    = documento,
+            tipoDocumento = tipoDocumento,
+            fechaNacimiento = fechaNacimiento
         )
     }
 

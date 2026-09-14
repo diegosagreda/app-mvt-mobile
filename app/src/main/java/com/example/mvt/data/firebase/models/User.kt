@@ -18,5 +18,6 @@ data class User(
     val telefono: String? = null,
     val genero: String? = null,
     val identificacion: String? = null,
+    val tipo_documento: String? = null,
     val pais: String? = null,
     )

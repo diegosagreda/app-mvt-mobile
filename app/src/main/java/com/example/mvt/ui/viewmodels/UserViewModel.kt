@@ -50,8 +50,9 @@ class UserViewModel(
             _uiState.value = ProfileUiState.Loading
             try {
                 val userInfo = getUserInfoUseCase()
-                _user.value  = userInfo
-                _uiState.value = ProfileUiState.Idle
+                if (userInfo != null) _user.value = userInfo
+                _uiState.value = if (userInfo != null) ProfileUiState.Idle
+                    else ProfileUiState.Error("No pudimos cargar tu perfil")
             } catch (e: Exception) {
                 Log.e("UserViewModel", "Error cargando usuario", e)
                 _uiState.value = ProfileUiState.Error("Error al cargar los datos")
@@ -69,7 +70,9 @@ class UserViewModel(
         alias:        String,
         documento:    String,
         onSuccess:    () -> Unit,
-        onError:      () -> Unit
+        onError:      () -> Unit,
+        tipoDocumento: String? = null,
+        fechaNacimiento: String? = null
     ) {
         viewModelScope.launch {
             try {
@@ -80,7 +83,9 @@ class UserViewModel(
                     genero       = genero,
                     nacionalidad = nacionalidad,
                     alias        = alias,
-                    documento    = documento
+                    documento    = documento,
+                    tipoDocumento = tipoDocumento,
+                    fechaNacimiento = fechaNacimiento
                 )
                 _uiState.value = ProfileUiState.Saved
                 onSuccess()
