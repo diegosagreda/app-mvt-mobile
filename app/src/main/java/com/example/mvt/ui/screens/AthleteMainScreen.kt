@@ -78,6 +78,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
+import com.example.mvt.ui.components.MvtLoadingOverlay
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
@@ -424,7 +425,7 @@ fun AthleteMainScreen(
                         }
 
                         when {
-                            isLoadingRoutine -> LoaderOverlay()
+                            isLoadingRoutine -> MvtLoadingOverlay()
                             routine != null -> RoutineDetailScreen(
                                 routine = routine!!,
                                 ritmos = realtimeViewModel.ritmos.value,
@@ -641,8 +642,8 @@ fun AthleteMainScreen(
                     }
                 )
 
-                if (showLoader) LoaderOverlay()
-                if (sectionLoaderTarget != null) LoaderOverlay()
+                if (showLoader) MvtLoadingOverlay()
+                if (sectionLoaderTarget != null) MvtLoadingOverlay()
             }
         }
     }
@@ -1022,7 +1023,6 @@ private fun PersonalDataHubScreen(
         }
     }
 }
-
 @Composable
 private fun PersonalDataOptionCard(
     option: PersonalDataOption,
@@ -2593,30 +2593,6 @@ private fun MissingRoutineScreen(
                     Text("Volver al calendario")
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun LoaderOverlay() {
-    Box(
-        modifier = Modifier.fillMaxSize().background(AppBackground.copy(alpha = 0.88f)),
-        contentAlignment = Alignment.Center
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            CircularProgressIndicator(
-                color = PrimaryBlue,
-                strokeWidth = 6.dp,
-                modifier = Modifier.size(110.dp)
-            )
-            Image(
-                painter = painterResource(id = R.drawable.mvt),
-                contentDescription = "MVT",
-                contentScale = ContentScale.Fit,
-                modifier = Modifier
-                    .width(63.dp)
-                    .height(27.dp)
-            )
         }
     }
 }
