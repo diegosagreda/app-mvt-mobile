@@ -150,6 +150,27 @@ private val underConstructionFeatures = listOf(
         summary = "Esta seccion permitira consultar el directorio de entrenadores. Por el momento sigue en construccion."
     ),
     UnderConstructionFeature(
+        id = "approved-athletes",
+        title = "Deportistas aprobados",
+        section = "Entrenamiento",
+        icon = Icons.Default.Groups,
+        summary = "Aqui podras consultar y gestionar los deportistas aprobados que estan vinculados a tu proceso de entrenamiento. Esta vista aun se encuentra en construccion."
+    ),
+    UnderConstructionFeature(
+        id = "pending-requests",
+        title = "Solicitudes pendientes",
+        section = "Entrenamiento",
+        icon = Icons.Default.PersonPin,
+        summary = "Aqui podras revisar y responder las invitaciones de los atletas que desean vincularse contigo. Esta vista aun se encuentra en construccion."
+    ),
+    UnderConstructionFeature(
+        id = "routine-library",
+        title = "Biblioteca de rutinas",
+        section = "Rutinas",
+        icon = Icons.Default.ReceiptLong,
+        summary = "Aqui podras gestionar tus rutinas pendientes y borradores antes de cerrarlas o asignarlas. Esta vista aun se encuentra en construccion."
+    ),
+    UnderConstructionFeature(
         id = "explore",
         title = "Explorar",
         section = "Entrenamiento",

@@ -150,11 +150,15 @@ fun RoutinesScreen(
     navController: NavController,
     onRoutineClick: () -> Unit,
     currentAthleteId: String,
+    trainerId: String? = null,
     ritmos: Map<String, Any>?,
     zonas: Map<String, Any>?,
     athleteName: String = "Atleta",
     trainingAvailability: TrainingAvailability? = null,
-    contentMode: RoutinesContentMode = RoutinesContentMode.CALENDAR
+    contentMode: RoutinesContentMode = RoutinesContentMode.CALENDAR,
+    headerContent: (@Composable () -> Unit)? = null,
+    footerContent: (@Composable () -> Unit)? = null,
+    onRoutineNavigate: ((String) -> Unit)? = null
 ) {
     val routineRepository = remember { RoutineRepository(FirestoreService()) }
     val routineViewModel = remember {
@@ -236,6 +240,9 @@ fun RoutinesScreen(
     ) {
         when (contentMode) {
             RoutinesContentMode.CALENDAR -> {
+                headerContent?.let { content ->
+                    item { content() }
+                }
                 item {
                     PerformanceCalendarHeader()
                 }
@@ -262,8 +269,12 @@ fun RoutinesScreen(
                     items(selectedRoutines) { routine ->
                         SelectedRoutineCard(routine) {
                             onRoutineClick()
-                            navController.navigate("routine_detail/${Uri.encode(routine.id)}")
+                            onRoutineNavigate?.invoke(routine.id)
+                                ?: navController.navigate("routine_detail/${Uri.encode(routine.id)}")
                         }
+                    }
+                    footerContent?.let { content ->
+                        item { content() }
                     }
                 }
             }
@@ -272,7 +283,8 @@ fun RoutinesScreen(
                 item {
                     StatisticsContent(
                         athleteId = currentAthleteId,
-                        routineRepository = routineRepository
+                        routineRepository = routineRepository,
+                        trainerId = trainerId
                     )
                 }
             }
@@ -1448,7 +1460,8 @@ private data class RoutineStatistics(
 @Composable
 private fun StatisticsContent(
     athleteId: String,
-    routineRepository: RoutineRepository
+    routineRepository: RoutineRepository,
+    trainerId: String?
 ) {
     var filter by remember { mutableStateOf(StatisticsFilter.CURRENT_MONTH) }
     var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
@@ -1484,6 +1497,7 @@ private fun StatisticsContent(
         runCatching {
             routineRepository.getRoutinesForStatistics(
                 athleteId = athleteId,
+                trainerId = trainerId,
                 start = range.start.toStartTimestamp(),
                 end = range.end.plusDays(1).toStartTimestamp(),
                 onlyComplete = true
