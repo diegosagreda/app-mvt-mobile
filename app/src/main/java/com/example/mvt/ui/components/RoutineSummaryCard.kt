@@ -170,7 +170,7 @@ fun RoutineSummaryCard(
                                 text = cleanRoutineStateLabel(routine.estado),
                                 fontSize = 13.sp,
                                 fontWeight = FontWeight.SemiBold,
-                                color = estadoColor,
+                                color = AppTextPrimary,
                                 maxLines = 1
                             )
                         }

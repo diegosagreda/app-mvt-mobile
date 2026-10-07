@@ -225,7 +225,10 @@ class GoalsRepository(
             targetDate = map.text("targetDate").ifBlank { normalizeDate(legacyDate) },
             legacyDate = legacyDate, description = map.text("descripcion"),
             createdAt = map["createdAt"].asLong(), updatedAt = map["updatedAt"].asLong(),
-            legacyOrder = key?.toLongOrNull() ?: fallbackOrder
+            legacyOrder = key?.toLongOrNull() ?: fallbackOrder,
+            progressPercent = map.nullableInt("progreso_porcentaje")?.coerceIn(0, 100),
+            completed = map["completado"] == true,
+            assignedByTrainer = map["asignado_por_entrenador"] as? Boolean
         )
     }
 
@@ -235,7 +238,12 @@ class GoalsRepository(
         "especificoM" to specificMinutes?.toString(), "especificoS" to specificSeconds?.toString(),
         "fecha" to legacyDate, "targetDate" to targetDate, "descripcion" to description,
         "createdAt" to createdAt, "updatedAt" to updatedAt
-    )
+    ).apply {
+        // Preserve optional tracking metadata when editing an existing goal.
+        progressPercent?.let { put("progreso_porcentaje", it) }
+        if (completed) put("completado", true)
+        assignedByTrainer?.let { put("asignado_por_entrenador", it) }
+    }
 
     private fun normalizeGoalCollection(value: Any?): List<Map<String, Any?>> = when (value) {
         is List<*> -> value.mapNotNull { item -> (item as? Map<*, *>)?.entries?.associate { it.key.toString() to it.value } }

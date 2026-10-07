@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.mvt.ui.theme.AppTextPrimary
+import com.example.mvt.ui.theme.AppTextSecondary
 
 @Composable
 fun SummaryBaseItem(
@@ -33,7 +35,7 @@ fun SummaryBaseItem(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = AppTextPrimary,
                     modifier = Modifier.size(22.dp)
                 )
             }
@@ -41,13 +43,13 @@ fun SummaryBaseItem(
 
         Spacer(modifier = Modifier.height(6.dp))
 
-        Text(label, fontSize = 12.sp, color = Color.White.copy(alpha = 0.9f))
+        Text(label, fontSize = 12.sp, color = AppTextSecondary)
 
         Text(
             value,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
-            color = Color.White
+            color = AppTextPrimary
         )
     }
 }

@@ -27,7 +27,8 @@ data class MvtColors(
     val textSecondary: Color,
     val iconMuted: Color,
     val primarySoft: Color,
-    val athleteNavigation: Color
+    val athleteNavigation: Color,
+    val goalsSummary: Color
 )
 
 val DarkMvtColors = MvtColors(
@@ -40,7 +41,8 @@ val DarkMvtColors = MvtColors(
     textSecondary = DarkText,
     iconMuted = Color(0xFF7F8AA3),
     primarySoft = Color(0x332C7BE5),
-    athleteNavigation = Color(0xFF63C7FF)
+    athleteNavigation = Color(0xFF63C7FF),
+    goalsSummary = Color(0xFF293B9B)
 )
 
 val LightMvtColors = MvtColors(
@@ -53,7 +55,8 @@ val LightMvtColors = MvtColors(
     textSecondary = Color(0xFF65718A),
     iconMuted = Color(0xFF7C879A),
     primarySoft = Color(0x1F0066CC),
-    athleteNavigation = Color(0xFF168AB5)
+    athleteNavigation = Color(0xFF168AB5),
+    goalsSummary = Color(0xFF394FE3)
 )
 
 val LocalMvtColors = staticCompositionLocalOf { DarkMvtColors }
@@ -107,3 +110,8 @@ val AppPrimarySoft: Color
     @Composable
     @ReadOnlyComposable
     get() = LocalMvtColors.current.primarySoft
+
+val GoalsSummaryBackground: Color
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalMvtColors.current.goalsSummary

@@ -1,19 +1,10 @@
 package com.example.mvt.goals.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.basicMarquee
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,49 +12,31 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Flag
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Save
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DatePickerDefaults
-import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SelectableDates
@@ -74,26 +47,22 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.mvt.goals.model.GoalDraft
-import com.example.mvt.goals.model.GoalsData
 import com.example.mvt.goals.model.GoalsScreenState
 import com.example.mvt.goals.model.SportGoal
 import com.example.mvt.goals.viewmodel.GoalsViewModel
@@ -101,14 +70,11 @@ import com.example.mvt.ui.components.FormSuccessNotification
 import com.example.mvt.ui.components.FormConfirmationDialog
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
-import com.example.mvt.ui.theme.AppPrimarySoft
 import com.example.mvt.ui.theme.AppSurface
-import com.example.mvt.ui.theme.AppSurfaceAlt
 import com.example.mvt.ui.theme.AppTextPrimary
 import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 import java.text.SimpleDateFormat
-import java.text.Normalizer
 import java.time.LocalDate
 import java.time.ZoneOffset
 import java.util.Date
@@ -145,7 +111,6 @@ fun GoalsScreen(
     var editingGoal by remember { mutableStateOf<SportGoal?>(null) }
     var addingGoal by remember { mutableStateOf(false) }
     var successMessage by remember { mutableStateOf<String?>(null) }
-    var searchText by remember { mutableStateOf("") }
 
     LaunchedEffect(athleteId) { viewModel.load(athleteId) }
     LaunchedEffect(action.message) {
@@ -167,7 +132,7 @@ fun GoalsScreen(
     }
 
     Scaffold(
-        containerColor = AppBackground,
+        containerColor = AppSurface,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbar) }
     ) { padding ->
@@ -175,12 +140,9 @@ fun GoalsScreen(
             GoalsScreenState.Loading -> Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 CircularProgressIndicator(color = PrimaryBlue)
             }
-            is GoalsScreenState.Error -> GoalsError(current.message, onBack, Modifier.padding(padding))
-            is GoalsScreenState.Ready -> GoalsContent(
+            is GoalsScreenState.Error -> GoalsError(current.message, onBack, { viewModel.load(athleteId) }, Modifier.padding(padding))
+            is GoalsScreenState.Ready -> GoalsDashboardContent(
                 data = current.data,
-                searchText = searchText,
-                onBack = onBack,
-                onSearchChange = { searchText = it },
                 onNewGoal = {
                     if (editingGoal != null) form = GoalForm()
                     editingGoal = null
@@ -242,258 +204,6 @@ fun GoalsScreen(
             message = message,
             onDismiss = { successMessage = null }
         )
-    }
-}
-
-@Composable
-private fun GoalsContent(
-    data: GoalsData,
-    searchText: String,
-    onBack: () -> Unit,
-    onSearchChange: (String) -> Unit,
-    onNewGoal: () -> Unit,
-    onEdit: (SportGoal) -> Unit,
-    onDelete: (SportGoal) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val filteredGoals = remember(data.goals, searchText) {
-        val term = normalizeGoalSearch(searchText)
-        data.goals.filter { term.isBlank() || normalizeGoalSearch(it.name).contains(term) }
-    }
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(8.dp, 8.dp, 8.dp, 28.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp)
-    ) {
-        item { GoalsHeader(onBack) }
-        item {
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.weight(1f).height(50.dp)
-                            .clip(RoundedCornerShape(13.dp))
-                            .background(AppBackground.copy(alpha = 0.35f))
-                            .border(1.dp, AppBorder, RoundedCornerShape(13.dp))
-                            .padding(horizontal = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Icon(Icons.Default.Search, null, tint = AppTextSecondary, modifier = Modifier.size(17.dp))
-                        BasicTextField(
-                            value = searchText,
-                            onValueChange = onSearchChange,
-                            modifier = Modifier.weight(1f),
-                            singleLine = true,
-                            textStyle = androidx.compose.ui.text.TextStyle(
-                                color = AppTextPrimary,
-                                fontSize = 12.sp
-                            ),
-                            cursorBrush = SolidColor(PrimaryBlue),
-                            decorationBox = { innerField ->
-                                Box(contentAlignment = Alignment.CenterStart) {
-                                    if (searchText.isBlank()) {
-                                        Text("Buscar objetivo", color = AppTextSecondary, fontSize = 11.sp, maxLines = 1)
-                                    }
-                                    innerField()
-                                }
-                            }
-                        )
-                    }
-                    Button(
-                        onClick = onNewGoal,
-                        modifier = Modifier.height(50.dp),
-                        contentPadding = PaddingValues(horizontal = 13.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        shape = RoundedCornerShape(13.dp)
-                    ) {
-                        Box(
-                            Modifier.size(24.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.16f)),
-                            contentAlignment = Alignment.Center
-                        ) { Icon(Icons.Default.Add, null, modifier = Modifier.size(16.dp)) }
-                        Spacer(Modifier.size(7.dp))
-                        Text("Nuevo", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-                if (filteredGoals.isEmpty()) {
-                    EmptyGoals(if (searchText.isBlank()) "No hay objetivos registrados." else "No se encontraron objetivos con ese nombre.")
-                } else {
-                    filteredGoals.forEach { GoalCard(it, onEdit, onDelete) }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GoalsHeader(onBack: () -> Unit) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = AppTextPrimary) }
-        Column {
-            Text("Objetivos deportivos", color = AppTextPrimary, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-@Composable
-private fun GoalCard(goal: SportGoal, onEdit: (SportGoal) -> Unit, onDelete: (SportGoal) -> Unit) {
-    var menuExpanded by remember { mutableStateOf(false) }
-    var descriptionExpanded by remember(goal.id) { mutableStateOf(false) }
-    var descriptionOverflows by remember(goal.id) { mutableStateOf(false) }
-    Card(
-        colors = CardDefaults.cardColors(containerColor = AppSurfaceAlt),
-        border = BorderStroke(1.dp, AppBorder),
-        shape = RoundedCornerShape(18.dp)
-    ) {
-        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(11.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                GoalDateBadge(goal.targetDate)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                    Text(
-                        goal.name,
-                        color = AppTextPrimary,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 1,
-                        modifier = Modifier.fillMaxWidth().basicMarquee()
-                    )
-                    if (goal.generalGoal.isNotBlank()) {
-                        Text(
-                            goal.generalGoal,
-                            color = AppTextSecondary,
-                            fontSize = 13.sp,
-                            maxLines = 1,
-                            modifier = Modifier.fillMaxWidth().basicMarquee()
-                        )
-                    }
-                }
-                Column(Modifier.width(88.dp), horizontalAlignment = Alignment.End) {
-                    Box {
-                        IconButton(
-                            onClick = { menuExpanded = true },
-                            modifier = Modifier.size(30.dp)
-                        ) {
-                            Icon(Icons.Default.MoreVert, "Opciones", tint = AppTextSecondary)
-                        }
-                        DropdownMenu(
-                            expanded = menuExpanded,
-                            onDismissRequest = { menuExpanded = false },
-                            containerColor = AppSurface
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("Editar", color = AppTextPrimary) },
-                                leadingIcon = { Icon(Icons.Default.Edit, null, tint = PrimaryBlue) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onEdit(goal)
-                                }
-                            )
-                            DropdownMenuItem(
-                                text = { Text("Eliminar", color = GoalDangerRed) },
-                                leadingIcon = { Icon(Icons.Default.Delete, null, tint = GoalDangerRed) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onDelete(goal)
-                                }
-                            )
-                        }
-                    }
-                    if (goal.sport.isNotBlank()) {
-                        Box(
-                            modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(50))
-                                .background(PrimaryBlue).padding(horizontal = 9.dp, vertical = 5.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                goal.sport,
-                                color = Color.White,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                maxLines = 1,
-                                modifier = Modifier.fillMaxWidth().basicMarquee(),
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            }
-            HorizontalDivider(color = AppBorder)
-            if (goal.specific.isNotBlank()) {
-                Row(
-                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
-                        .background(AppBackground.copy(alpha = 0.45f)).padding(10.dp),
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(Modifier.size(30.dp).clip(CircleShape).background(AppPrimarySoft), contentAlignment = Alignment.Center) {
-                        Icon(Icons.Default.Flag, null, tint = PrimaryBlue, modifier = Modifier.size(17.dp))
-                    }
-                    Column {
-                        Text("Marca / objetivo específico", color = AppTextSecondary, fontSize = 10.sp)
-                        Text(goal.specific, color = AppTextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    }
-                }
-            }
-            if (goal.description.isNotBlank()) {
-                Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                    Text(
-                        goal.description,
-                        color = AppTextSecondary,
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp,
-                        maxLines = if (descriptionExpanded) Int.MAX_VALUE else 4,
-                        overflow = TextOverflow.Ellipsis,
-                        onTextLayout = { result ->
-                            if (!descriptionExpanded) descriptionOverflows = result.hasVisualOverflow
-                        }
-                    )
-                    if (descriptionOverflows || descriptionExpanded) {
-                        Text(
-                            if (descriptionExpanded) "Ver menos" else "Ver más",
-                            color = PrimaryBlue,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.clickable { descriptionExpanded = !descriptionExpanded }
-                                .padding(vertical = 3.dp)
-                        )
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun GoalDateBadge(targetDate: String) {
-    val date = runCatching { LocalDate.parse(targetDate) }.getOrNull()
-    val day = date?.dayOfMonth?.toString()?.padStart(2, '0') ?: "--"
-    val month = date?.month?.getDisplayName(java.time.format.TextStyle.SHORT, Locale.getDefault())
-        ?.replaceFirstChar { it.uppercase() } ?: "---"
-    Column(
-        modifier = Modifier.width(58.dp).clip(RoundedCornerShape(14.dp))
-            .background(PrimaryBlue.copy(alpha = 0.14f)).padding(vertical = 9.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Text(day, color = AppTextPrimary, fontSize = 21.sp, fontWeight = FontWeight.Bold)
-        Text(month.take(3), color = PrimaryBlue, fontSize = 11.sp, fontWeight = FontWeight.SemiBold)
-    }
-}
-
-@Composable
-private fun EmptyGoals(message: String) {
-    Column(Modifier.fillMaxWidth().padding(vertical = 28.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Icon(Icons.Default.Flag, null, tint = AppTextSecondary, modifier = Modifier.size(38.dp))
-        Text(message, color = AppTextSecondary, textAlign = TextAlign.Center)
     }
 }
 
@@ -628,10 +338,13 @@ private fun GoalDatePicker(current: String, onSelect: (String) -> Unit, onDismis
 }
 
 @Composable
-private fun GoalsError(message: String, onBack: () -> Unit, modifier: Modifier) {
+private fun GoalsError(message: String, onBack: () -> Unit, onRetry: () -> Unit, modifier: Modifier) {
     Column(modifier.fillMaxSize().padding(8.dp)) {
-        GoalsHeader(onBack)
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { Text(message, color = AppTextSecondary, textAlign = TextAlign.Center) }
+        IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, "Volver", tint = AppTextPrimary) }
+        Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            Text(message, color = AppTextSecondary, textAlign = TextAlign.Center)
+            Button(onClick = onRetry) { Text("Reintentar") }
+        }
     }
 }
 
@@ -671,9 +384,6 @@ private fun validDuration(form: GoalForm): Boolean {
 private fun isDurationSport(sport: String) = sport in setOf("Atletismo", "Ciclismo", "Natacion", "Natación", "Triatlon", "Triatlón")
 private fun digits(value: String, max: Int) = value.filter(Char::isDigit).take(max)
 private fun todayDate() = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-private fun normalizeGoalSearch(value: String): String = Normalizer
-    .normalize(value.lowercase().trim(), Normalizer.Form.NFD)
-    .replace("\\p{M}+".toRegex(), "")
 private fun displayDate(value: String): String = runCatching {
     val parsed = SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(value) ?: return@runCatching value
     SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(parsed)

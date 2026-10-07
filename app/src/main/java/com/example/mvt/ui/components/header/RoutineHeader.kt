@@ -57,18 +57,19 @@ fun RoutineHeader(
     )
 
     val measurementKey = tipoMedicion.orEmpty().trim().lowercase()
-    val (iconoMedicion, iconTint, measurementLabel) = when {
+    val (iconoMedicion, measurementLabel) = when {
         measurementKey == "tiempo" ->
-            Triple(Icons.Default.AccessTime, Color(0xFF7FB3FF), "Rutina por tiempo")
+            Icons.Default.AccessTime to "Rutina por tiempo"
         measurementKey == "distancia" ||
             measurementKey == "km" ||
             measurementKey == "m" ||
             measurementKey.contains("dist") ||
             measurementKey.contains("metro") ->
-            Triple(Icons.Default.Straighten, Color(0xFF79D7B7), "Rutina por distancia")
+            Icons.Default.Straighten to "Rutina por distancia"
         else ->
-            Triple(Icons.Default.DirectionsRun, Color(0xFFFFC76E), "Rutina deportiva")
+            Icons.Default.DirectionsRun to "Rutina deportiva"
     }
+    val iconTint = MaterialTheme.colorScheme.primary
     val isShortTitle = titulo.trim().length <= 22
     val visualDate = rememberFormattedRoutineDate(fecha)
 
@@ -97,7 +98,7 @@ fun RoutineHeader(
             ) {
                 Text(
                     text = titulo,
-                    color = Color.White,
+                    color = AppTextPrimary,
                     fontWeight = FontWeight.Bold,
                     fontSize = 22.sp,
                     textAlign = TextAlign.Center,
@@ -133,13 +134,13 @@ fun RoutineHeader(
                         Box(
                             modifier = Modifier
                                 .size(30.dp)
-                                .background(Color.White.copy(alpha = 0.08f), CircleShape),
+                                .background(AppTextPrimary.copy(alpha = 0.08f), CircleShape),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Default.CalendarMonth,
                                 contentDescription = "Fecha",
-                                tint = Color(0xFFFFC76E),
+                                tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(17.dp)
                             )
                         }
@@ -149,7 +150,7 @@ fun RoutineHeader(
                         ) {
                             Text(
                                 text = visualDate,
-                                color = Color.White,
+                                color = AppTextPrimary,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 textAlign = TextAlign.Center
@@ -176,7 +177,7 @@ fun RoutineHeader(
                     Icon(
                         imageVector = Icons.Default.ArrowBack,
                         contentDescription = "Regresar",
-                        tint = Color.White
+                        tint = AppTextPrimary
                     )
                 }
 
@@ -221,7 +222,7 @@ fun RoutineHeader(
                                 Icon(
                                     imageVector = if (stravaExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
                                     contentDescription = null,
-                                    tint = Color.White.copy(alpha = 0.92f),
+                                    tint = AppTextSecondary,
                                     modifier = Modifier.size(18.dp)
                                 )
                             }

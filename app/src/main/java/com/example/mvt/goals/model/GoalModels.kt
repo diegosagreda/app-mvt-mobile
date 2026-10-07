@@ -14,7 +14,10 @@ data class SportGoal(
     val description: String = "",
     val createdAt: Long = 0L,
     val updatedAt: Long = 0L,
-    val legacyOrder: Long = 0L
+    val legacyOrder: Long = 0L,
+    val progressPercent: Int? = null,
+    val completed: Boolean = false,
+    val assignedByTrainer: Boolean? = null
 ) {
     val isDuration: Boolean get() = specificHours != null || specificMinutes != null || specificSeconds != null
 }
