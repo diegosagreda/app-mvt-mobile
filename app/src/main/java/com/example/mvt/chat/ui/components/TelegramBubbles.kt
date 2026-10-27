@@ -2,7 +2,9 @@ package com.example.mvt.chat.ui.components
 
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -12,13 +14,20 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Pause
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.VolumeOff
+import androidx.compose.material.icons.filled.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -30,6 +39,7 @@ import com.example.mvt.chat.data.model.ChatMessage
 import com.example.mvt.chat.data.model.UiMessage
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
+import com.example.mvt.ui.theme.AppError
 import com.example.mvt.ui.theme.AppSurface
 import com.example.mvt.ui.theme.AppSurfaceAlt
 import com.example.mvt.ui.theme.AppTextPrimary
@@ -38,8 +48,14 @@ import com.example.mvt.ui.theme.PrimaryBlue
 import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Calendar
 import java.util.Locale
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.platform.LocalContext
+import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
 
 private val reactionEmojis = listOf("👍", "❤️", "🔥", "😂", "👏", "😮")
 
@@ -257,25 +273,29 @@ fun TelegramMessageBubble(
     onDelete: (ChatMessage) -> Unit,
     onReact: (ChatMessage, String) -> Unit = { _, _ -> },
     myAvatarUrl: String = "",
-    otherAvatarUrl: String = ""
+    otherAvatarUrl: String = "",
+    recipientHasSeen: Boolean = false,
+    isReadByRecipient: Boolean = false
 ) {
     var menu by remember { mutableStateOf(false) }
     var expandedImageUrl by remember { mutableStateOf<String?>(null) }
 
     val isMine = ui.isMine
 
-    val bubbleColor = if (isMine) PrimaryBlue.copy(alpha = 0.34f) else AppSurface
+    val bubbleColor = if (isMine) PrimaryBlue.copy(alpha = 0.20f) else AppSurface
     val textColor = AppTextPrimary
     val metaColor = AppTextSecondary
+    val accentColor = if (isMine) PrimaryBlue else AppTextSecondary.copy(alpha = 0.65f)
     val showMessageText = shouldRenderMessageText(ui.msg)
     val emojiOnly = showMessageText && isEmojiOnly(ui.msg.texto)
     val groupedReactions = ui.msg.reactions.values.groupingBy { it }.eachCount()
 
-    val shape = if (isMine) {
-        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 18.dp, bottomEnd = 6.dp)
-    } else {
-        RoundedCornerShape(topStart = 18.dp, topEnd = 18.dp, bottomStart = 6.dp, bottomEnd = 18.dp)
-    }
+    val shape = RoundedCornerShape(
+        topStart = 18.dp,
+        topEnd = 18.dp,
+        bottomStart = if (isMine) 18.dp else 6.dp,
+        bottomEnd = if (isMine) 6.dp else 18.dp
+    )
 
     val sidePadding =
         if (isMine) PaddingValues(start = 34.dp, end = 0.dp)
@@ -296,6 +316,7 @@ fun TelegramMessageBubble(
         Box(
             modifier = Modifier
                 .widthIn(max = 264.dp)
+                .wrapContentWidth()
                 .padding(bottom = if (groupedReactions.isNotEmpty()) 18.dp else 0.dp)
                 .combinedClickable(
                     onClick = {},
@@ -304,58 +325,74 @@ fun TelegramMessageBubble(
         ) {
             Column(
                 modifier = Modifier
+                    .shadow(5.dp, shape)
+                    .border(1.dp, accentColor.copy(alpha = 0.35f), shape)
                     .clip(shape)
                     .background(bubbleColor)
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(start = 4.dp, end = 12.dp, top = 10.dp, bottom = 8.dp)
             ) {
-                if (ui.msg.imageUrl.isNotBlank()) {
-                    AsyncImage(
-                        model = ui.msg.imageUrl,
-                        contentDescription = "Imagen enviada por chat",
+                Row {
+                    Column(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 140.dp, max = 240.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .clickable { expandedImageUrl = ui.msg.imageUrl },
-                        contentScale = ContentScale.Crop
-                    )
-                }
+                            .wrapContentWidth()
+                            .widthIn(max = 236.dp)
+                    ) {
+                        if (ui.msg.imageUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = ui.msg.imageUrl,
+                                contentDescription = "Imagen enviada por chat",
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = 140.dp, max = 240.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .clickable { expandedImageUrl = ui.msg.imageUrl },
+                                contentScale = ContentScale.Crop
+                            )
+                        }
 
-                if (showMessageText) {
-                    if (ui.msg.imageUrl.isNotBlank()) {
-                        Spacer(Modifier.height(8.dp))
-                    }
-                    Text(
-                        text = ui.msg.texto,
-                        color = textColor,
-                        style = if (emojiOnly) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyMedium,
-                        lineHeight = if (emojiOnly) 28.sp else 20.sp
-                    )
-                }
+                        if (showMessageText) {
+                            if (ui.msg.imageUrl.isNotBlank()) {
+                                Spacer(Modifier.height(8.dp))
+                            }
+                            Text(
+                                text = ui.msg.texto,
+                                color = textColor,
+                                style = if (emojiOnly) MaterialTheme.typography.headlineSmall else MaterialTheme.typography.bodyMedium,
+                                lineHeight = if (emojiOnly) 28.sp else 20.sp
+                            )
+                        }
 
-                if (ui.msg.audioUrl.isNotBlank()) {
-                    Spacer(Modifier.height(if (showMessageText || ui.msg.imageUrl.isNotBlank()) 6.dp else 0.dp))
-                    Spacer(Modifier.height(4.dp))
-                    Text("🎤 Audio", color = metaColor, style = MaterialTheme.typography.labelMedium)
-                }
+                        if (ui.msg.audioUrl.isNotBlank()) {
+                            Spacer(Modifier.height(if (showMessageText || ui.msg.imageUrl.isNotBlank()) 6.dp else 0.dp))
+                            AudioMessagePlayer(
+                                audioUrl = ui.msg.audioUrl,
+                                contentColor = textColor,
+                                secondaryColor = metaColor
+                            )
+                        }
 
-                Spacer(Modifier.height(6.dp))
+                        Spacer(Modifier.height(6.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = formatTime(ui.msg.timestamp),
-                        fontSize = 11.sp,
-                        color = metaColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Clip
-                    )
-                    if (isMine) {
-                        Spacer(Modifier.width(6.dp))
-                        Text(text = "✓✓", fontSize = 11.sp, color = metaColor)
+                        Row(
+                            horizontalArrangement = Arrangement.End,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = formatTime(ui.msg.timestamp),
+                                fontSize = 11.sp,
+                                color = metaColor,
+                                maxLines = 1,
+                                overflow = TextOverflow.Clip
+                            )
+                            if (isMine) {
+                                Spacer(Modifier.width(6.dp))
+                                Text(
+                                    text = "✓✓",
+                                    fontSize = 11.sp,
+                                    color = if (isReadByRecipient) PrimaryBlue else metaColor
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -470,6 +507,190 @@ fun TelegramMessageBubble(
 }
 
 @Composable
+private fun BubbleTail(
+    color: Color,
+    isMine: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Canvas(
+        modifier = modifier.size(width = 10.dp, height = 14.dp)
+    ) {
+        val path = androidx.compose.ui.graphics.Path().apply {
+            if (isMine) {
+                moveTo(size.width, 0f)
+                lineTo(0f, size.height)
+                lineTo(size.width, size.height * 0.72f)
+            } else {
+                moveTo(0f, 0f)
+                lineTo(size.width, size.height)
+                lineTo(0f, size.height * 0.72f)
+            }
+            close()
+        }
+        drawPath(path, color)
+    }
+}
+
+@Composable
+private fun AudioMessagePlayer(
+    audioUrl: String,
+    contentColor: Color,
+    secondaryColor: Color
+) {
+    val context = LocalContext.current
+    var isPlaying by remember(audioUrl) { mutableStateOf(false) }
+    var isBuffering by remember(audioUrl) { mutableStateOf(false) }
+    var hasError by remember(audioUrl) { mutableStateOf(false) }
+    var isEnded by remember(audioUrl) { mutableStateOf(false) }
+    var positionMs by remember(audioUrl) { mutableLongStateOf(0L) }
+    var durationMs by remember(audioUrl) { mutableLongStateOf(0L) }
+    var isMuted by remember(audioUrl) { mutableStateOf(false) }
+    val player = remember(audioUrl) {
+        ExoPlayer.Builder(context).build().apply {
+            setMediaItem(MediaItem.fromUri(audioUrl))
+            prepare()
+        }
+    }
+
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onIsPlayingChanged(playing: Boolean) {
+                isPlaying = playing
+            }
+
+            override fun onPlaybackStateChanged(state: Int) {
+                isBuffering = state == Player.STATE_BUFFERING
+                isEnded = state == Player.STATE_ENDED
+                if (isEnded) isPlaying = false
+            }
+
+            override fun onPlayerError(error: PlaybackException) {
+                hasError = true
+                isPlaying = false
+                isBuffering = false
+                isEnded = false
+            }
+        }
+        player.addListener(listener)
+        onDispose {
+            player.removeListener(listener)
+            player.release()
+        }
+    }
+
+    LaunchedEffect(player, isPlaying, isBuffering) {
+        while (true) {
+            positionMs = player.currentPosition.coerceAtLeast(0L)
+            durationMs = player.duration.takeIf { it > 0L } ?: 0L
+            delay(200L)
+        }
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = {
+                hasError = false
+                if (isEnded) {
+                    player.seekTo(0)
+                    isEnded = false
+                }
+                if (player.isPlaying) player.pause() else player.play()
+            },
+            enabled = !isBuffering,
+            modifier = Modifier.size(40.dp)
+        ) {
+            when {
+                isBuffering -> CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = Color.White,
+                    strokeWidth = 2.dp
+                )
+                isEnded -> Icon(
+                    imageVector = Icons.Default.Replay,
+                    contentDescription = "Reproducir audio nuevamente",
+                    tint = Color.White
+                )
+                isPlaying -> Icon(
+                    imageVector = Icons.Default.Pause,
+                    contentDescription = "Pausar audio",
+                    tint = Color.White
+                )
+                else -> Icon(
+                    imageVector = Icons.Default.PlayArrow,
+                    contentDescription = "Reproducir audio",
+                    tint = Color.White
+                )
+            }
+        }
+
+        Column(Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = if (hasError) "No se pudo reproducir el audio" else formatAudioTime(positionMs),
+                    color = if (hasError) AppError else secondaryColor,
+                    style = MaterialTheme.typography.labelSmall
+                )
+                Spacer(Modifier.weight(1f))
+                Text(
+                    text = formatAudioTime(durationMs),
+                    color = secondaryColor,
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+
+            Slider(
+                value = if (durationMs > 0L) {
+                    (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+                } else {
+                    0f
+                },
+                onValueChange = { progress ->
+                    if (durationMs > 0L) {
+                        isEnded = false
+                        player.seekTo((progress * durationMs).toLong())
+                    }
+                },
+                enabled = durationMs > 0L && !hasError,
+                modifier = Modifier.fillMaxWidth(),
+                colors = SliderDefaults.colors(
+                    thumbColor = PrimaryBlue,
+                    activeTrackColor = PrimaryBlue,
+                    inactiveTrackColor = secondaryColor.copy(alpha = 0.35f)
+                )
+            )
+        }
+
+        IconButton(
+            onClick = {
+                isMuted = !isMuted
+                player.volume = if (isMuted) 0f else 1f
+            },
+            enabled = !hasError,
+            modifier = Modifier.size(40.dp)
+        ) {
+            Icon(
+                imageVector = if (isMuted) Icons.Default.VolumeOff else Icons.Default.VolumeUp,
+                contentDescription = if (isMuted) "Activar sonido" else "Silenciar audio",
+                tint = secondaryColor
+            )
+        }
+    }
+}
+
+private fun formatAudioTime(milliseconds: Long): String {
+    val totalSeconds = (milliseconds / 1000L).coerceAtLeast(0L)
+    val minutes = totalSeconds / 60L
+    val seconds = totalSeconds % 60L
+    return "%d:%02d".format(Locale.getDefault(), minutes, seconds)
+}
+
+@Composable
 private fun ChatMessageAvatar(
     photoUrl: String,
     contentDescription: String
@@ -546,11 +767,20 @@ private fun formatTime(timestamp: Any?): String {
 
 private fun formatDay(timestamp: Any?): String {
     val ms = toEpochMillis(timestamp) ?: return ""
-    return try {
-        SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(Date(ms))
-    } catch (_: Exception) {
-        ""
+    val messageDate = Calendar.getInstance().apply { timeInMillis = ms }
+    val today = Calendar.getInstance()
+    val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
+    return when {
+        isSameCalendarDay(messageDate, today) -> "HOY"
+        isSameCalendarDay(messageDate, yesterday) -> "AYER"
+        else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(ms))
     }
+}
+
+private fun isSameCalendarDay(first: Calendar, second: Calendar): Boolean {
+    return first.get(Calendar.ERA) == second.get(Calendar.ERA) &&
+        first.get(Calendar.YEAR) == second.get(Calendar.YEAR) &&
+        first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR)
 }
 
 private fun isEmojiOnly(text: String): Boolean {

@@ -101,6 +101,11 @@ class TrainerRealtimeRepository(
             if (!snap.exists()) return TrainerPersonalData()
 
             fun s(key: String) = snap.child(key).getValue(String::class.java).orEmpty()
+            val photoUrl = listOf("foto_url", "photoUrl", "photoURL", "foto")
+                .firstNotNullOfOrNull { key ->
+                    s(key).takeIf { it.isNotBlank() }
+                }
+                .orEmpty()
 
             val data = TrainerPersonalData(
                 identificacion = s("identificacion"),
@@ -114,7 +119,7 @@ class TrainerRealtimeRepository(
                 telefono = s("telefono"),
                 direccion = s("direccion"),
                 formularioBienvenida = snap.child("formularioBienvenida").value,
-                foto_url = s("foto_url")
+                foto_url = photoUrl
             )
 
             Log.d(TAG, "TrainerPersonalData.foto_url='${data.foto_url}'")
@@ -123,6 +128,41 @@ class TrainerRealtimeRepository(
             Log.e(TAG, "Error leyendo users/{trainerId}: ${e.message}", e)
             TrainerPersonalData()
         }
+    }
+
+    fun listenTrainerPhotoUrl(
+        trainerId: String,
+        onChange: (String) -> Unit
+    ): ValueEventListener? {
+        val safeId = trainerId.trim()
+        if (safeId.isBlank()) return null
+
+        val reference = root.child("users").child(safeId)
+        val listener = object : ValueEventListener {
+            override fun onDataChange(snapshot: DataSnapshot) {
+                val photoUrl = listOf("foto_url", "photoUrl", "photoURL", "foto")
+                    .firstNotNullOfOrNull { key ->
+                        snapshot.child(key).value?.toString()?.trim()
+                            ?.takeIf { it.isNotBlank() }
+                    }
+                    .orEmpty()
+                Log.d(TAG, "listenTrainerPhotoUrl trainerId='$safeId' hasPhoto=${photoUrl.isNotBlank()}")
+                onChange(photoUrl)
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e(TAG, "Error observando foto del entrenador '$safeId': ${error.message}")
+            }
+        }
+        reference.addValueEventListener(listener)
+        return listener
+    }
+
+    fun removeTrainerPhotoListener(
+        trainerId: String,
+        listener: ValueEventListener
+    ) {
+        root.child("users").child(trainerId.trim()).removeEventListener(listener)
     }
 
     /**

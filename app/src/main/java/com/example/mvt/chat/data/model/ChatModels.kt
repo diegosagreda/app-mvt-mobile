@@ -21,11 +21,27 @@ data class Conversation(
     val mensajes: Map<String, ChatMessage> = emptyMap()
 )
 
+data class ChatConversationSnapshot(
+    val messages: List<ChatMessage> = emptyList(),
+    val athleteHasSeen: Boolean = false,
+    val trainerHasSeen: Boolean = false,
+    val lastAthleteSeenAt: String = "",
+    val lastTrainerSeenAt: String = ""
+)
+
+data class ConversationPreview(
+    val conversationId: String = "",
+    val athleteId: String = "",
+    val lastMessage: ChatMessage? = null,
+    val unreadCount: Int = 0
+)
+
 data class UiMessage(
     val msg: ChatMessage,
     val groupLabel: String,
     val showGroupHeader: Boolean,
-    val isMine: Boolean
+    val isMine: Boolean,
+    val isReadByRecipient: Boolean = false
 )
 
 data class ChatAlertState(

@@ -15,19 +15,25 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.EmojiEmotions
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Send
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.mvt.chat.data.model.ChatMessage
 import com.example.mvt.chat.ui.components.TelegramMessageBubble
+import com.example.mvt.chat.ui.components.DateHeader
 import com.example.mvt.chat.viewmodel.ChatUiState
 import com.example.mvt.chat.viewmodel.ChatViewModel
 import com.example.mvt.ui.theme.AppBackground
@@ -40,8 +46,16 @@ import com.example.mvt.ui.theme.PrimaryBlue
 import androidx.core.content.FileProvider
 import coil.compose.AsyncImage
 import java.io.File
+import java.util.Locale
+import android.Manifest
+import android.content.pm.PackageManager
+import android.media.MediaRecorder
+import android.util.Log
+import androidx.core.content.ContextCompat
+import kotlinx.coroutines.delay
 
 private val composerEmojis = listOf("💪", "🔥", "👏", "🎯", "👍", "❤️", "😂", "😮")
+private const val AUDIO_RECORDING_TAG = "ChatAudioRecording"
 
 @Composable
 fun ChatConversationContent(
@@ -74,14 +88,38 @@ fun ChatConversationContent(
             verticalArrangement = Arrangement.spacedBy(8.dp),
             contentPadding = PaddingValues(bottom = 8.dp)
         ) {
+            if (state.messages.isEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = "Aún no hay mensajes.",
+                            color = AppTextPrimary,
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = "Inicia la conversación con tu deportista.",
+                            color = AppTextSecondary,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
             // FIX: key estable con fallback si msg.id viene ""
             items(
                 items = state.messages,
                 key = { ui ->
-                    ui.msg.id.takeIf { it.isNotBlank() }
-                        ?: "${ui.msg.remitente}_${ui.msg.timestamp}"
+                    "message_${ui.msg.id.takeIf { it.isNotBlank() }
+                        ?: "${ui.msg.remitente}_${ui.msg.timestamp}"}"
                 }
             ) { ui ->
+                if (ui.showGroupHeader) {
+                    DateHeader(ui.groupLabel)
+                }
                 TelegramMessageBubble(
                     ui = ui,
                     onReply = { vm.setReply(it) },
@@ -89,7 +127,9 @@ fun ChatConversationContent(
                     onDelete = { vm.deleteMessage(it.id) },
                     onReact = { message, emoji -> vm.toggleReaction(message.id, emoji) },
                     myAvatarUrl = myAvatarUrl,
-                    otherAvatarUrl = otherAvatarUrl
+                    otherAvatarUrl = otherAvatarUrl,
+                    recipientHasSeen = state.recipientHasSeen,
+                    isReadByRecipient = ui.isReadByRecipient
                 )
             }
         }
@@ -97,13 +137,15 @@ fun ChatConversationContent(
         ChatComposer(
             replyingTo = state.replyingTo,
             imageUri = state.imageUri,
+            audioUri = state.audioUri,
             isUploadingImage = state.isUploadingImage,
             isSendingMessage = state.isSendingMessage,
             onAttachImage = { vm.attachImage(it) },
+            onAttachAudio = { vm.attachAudio(it) },
             onClearImage = { vm.attachImage(null) },
             onCancelReply = { vm.clearReply() },
             onSend = { text ->
-                if (text.trim().isNotEmpty() || state.imageUri != null) {
+                if (text.trim().isNotEmpty() || state.imageUri != null || state.audioUri != null) {
                     vm.sendTextMessage(
                         text = text.trim(),
                         replyToMessageId = state.replyingTo?.id // puede ser null
@@ -118,9 +160,11 @@ fun ChatConversationContent(
 private fun ChatComposer(
     replyingTo: ChatMessage?,
     imageUri: Uri?,
+    audioUri: Uri?,
     isUploadingImage: Boolean,
     isSendingMessage: Boolean,
     onAttachImage: (Uri?) -> Unit,
+    onAttachAudio: (Uri?) -> Unit,
     onClearImage: () -> Unit,
     onCancelReply: () -> Unit,
     onSend: (String) -> Unit
@@ -130,7 +174,23 @@ private fun ChatComposer(
     var showAttachMenu by remember { mutableStateOf(false) }
     var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
     var wasSending by remember { mutableStateOf(false) }
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingSeconds by remember { mutableIntStateOf(0) }
+    var recorder by remember { mutableStateOf<MediaRecorder?>(null) }
+    var recordingFile by remember { mutableStateOf<File?>(null) }
     val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            startAudioRecording(
+                context = context,
+                onRecorderCreated = { recorder = it },
+                onFileCreated = { recordingFile = it },
+                onRecordingChanged = { isRecording = it }
+            )
+        }
+    }
 
     val galleryLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
@@ -157,6 +217,22 @@ private fun ChatComposer(
         wasSending = isSendingMessage
     }
 
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingSeconds = 0
+            while (isRecording) {
+                delay(1_000)
+                recordingSeconds++
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            recorder?.release()
+        }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -177,6 +253,27 @@ private fun ChatComposer(
                 isUploadingImage = isUploadingImage,
                 onClear = onClearImage
             )
+            Spacer(Modifier.height(8.dp))
+        }
+
+        if (audioUri != null && !isRecording) {
+            Surface(
+                shape = RoundedCornerShape(12.dp),
+                color = AppSurfaceAlt,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(Icons.Default.Mic, contentDescription = null, tint = PrimaryBlue)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Audio listo para enviar", color = AppTextPrimary, modifier = Modifier.weight(1f))
+                    IconButton(onClick = { onAttachAudio(null) }) {
+                        Icon(Icons.Default.Close, contentDescription = "Quitar audio", tint = AppTextSecondary)
+                    }
+                }
+            }
             Spacer(Modifier.height(8.dp))
         }
 
@@ -214,21 +311,66 @@ private fun ChatComposer(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.Bottom
         ) {
-            Box {
-                Surface(
-                    onClick = { showAttachMenu = true },
-                    shape = RoundedCornerShape(14.dp),
-                    color = AppSurfaceAlt,
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "+",
-                            style = MaterialTheme.typography.headlineSmall,
-                            color = AppTextPrimary
-                        )
-                    }
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 48.dp),
+                placeholder = { Text("Escribe un mensaje…") },
+                shape = RoundedCornerShape(14.dp),
+                maxLines = 5,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedContainerColor = AppSurfaceAlt,
+                    unfocusedContainerColor = AppSurfaceAlt,
+                    focusedBorderColor = AppBorder,
+                    unfocusedBorderColor = AppBorder,
+                    cursorColor = PrimaryBlue,
+                    focusedTextColor = AppTextPrimary,
+                    unfocusedTextColor = AppTextPrimary,
+                    focusedPlaceholderColor = AppTextSecondary,
+                    unfocusedPlaceholderColor = AppTextSecondary
+                )
+            )
+
+            Spacer(Modifier.width(10.dp))
+
+            val enabled = text.trim().isNotEmpty() || audioUri != null || imageUri != null
+            IconButton(
+                enabled = enabled,
+                onClick = { onSend(text) },
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(
+                        color = if (enabled) PrimaryBlue else AppSurfaceAlt,
+                        RoundedCornerShape(14.dp)
+                    )
+            ) {
+                if (isSendingMessage) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 2.dp,
+                        modifier = Modifier.size(18.dp)
+                    )
+                } else {
+                    Icon(Icons.Default.Send, contentDescription = "Enviar", tint = Color.White)
                 }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Box {
+                ComposerToolButton(
+                    icon = Icons.Default.AttachFile,
+                    contentDescription = "Adjuntar contenido",
+                    onClick = { showAttachMenu = true }
+                )
 
                 DropdownMenu(
                     expanded = showAttachMenu,
@@ -255,76 +397,86 @@ private fun ChatComposer(
                 }
             }
 
-            Spacer(Modifier.width(10.dp))
-
-            Surface(
-                onClick = { showEmojiPicker = !showEmojiPicker },
-                shape = RoundedCornerShape(14.dp),
-                color = AppSurfaceAlt,
-                modifier = Modifier.size(48.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text(
-                        text = if (showEmojiPicker) "×" else "😊",
-                        style = MaterialTheme.typography.titleMedium,
-                        color = AppTextPrimary
-                    )
-                }
-            }
-
-            Spacer(Modifier.width(10.dp))
-
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp),
-                placeholder = { Text("Escribe un mensaje…") },
-                shape = RoundedCornerShape(14.dp),
-                maxLines = 5,
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedContainerColor = AppSurfaceAlt,
-                    unfocusedContainerColor = AppSurfaceAlt,
-                    focusedBorderColor = AppBorder,
-                    unfocusedBorderColor = AppBorder,
-                    cursorColor = PrimaryBlue,
-                    focusedTextColor = AppTextPrimary,
-                    unfocusedTextColor = AppTextPrimary,
-                    focusedPlaceholderColor = AppTextSecondary,
-                    unfocusedPlaceholderColor = AppTextSecondary
-                )
+            ComposerToolButton(
+                icon = Icons.Default.EmojiEmotions,
+                contentDescription = if (showEmojiPicker) "Cerrar emojis" else "Abrir emojis",
+                onClick = { showEmojiPicker = !showEmojiPicker }
             )
 
-            Spacer(Modifier.width(10.dp))
-
-            val enabled = text.trim().isNotEmpty()
-            IconButton(
-                enabled = enabled || imageUri != null,
+            ComposerToolButton(
+                icon = if (isRecording) Icons.Default.Stop else Icons.Default.Mic,
+                contentDescription = if (isRecording) "Detener grabación" else "Grabar audio",
                 onClick = {
-                    onSend(text)
+                    if (isRecording) {
+                        runCatching { recorder?.stop() }
+                            .onFailure { Log.e(AUDIO_RECORDING_TAG, "No fue posible finalizar el audio", it) }
+                        recorder?.release()
+                        recorder = null
+                        isRecording = false
+                        recordingFile?.let { onAttachAudio(Uri.fromFile(it)) }
+                    } else if (ContextCompat.checkSelfPermission(
+                            context,
+                            Manifest.permission.RECORD_AUDIO
+                        ) == PackageManager.PERMISSION_GRANTED
+                    ) {
+                        startAudioRecording(
+                            context = context,
+                            onRecorderCreated = { recorder = it },
+                            onFileCreated = { recordingFile = it },
+                            onRecordingChanged = { isRecording = it }
+                        )
+                    } else {
+                        permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                    }
                 },
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = if (enabled || imageUri != null) PrimaryBlue else AppSurfaceAlt,
-                        shape = RoundedCornerShape(14.dp)
-                    )
-            ) {
-                if (isSendingMessage) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(18.dp)
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Send,
-                        contentDescription = "Enviar",
-                        tint = Color.White
+                enabled = !isSendingMessage && !isUploadingImage
+            )
+
+            if (isRecording) {
+                Surface(
+                    color = MaterialTheme.colorScheme.error.copy(alpha = 0.14f),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = "Grabando ${formatRecordingTime(recordingSeconds)}",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp)
                     )
                 }
+            } else {
+                Text(
+                    text = "Adjunta una imagen o graba un audio",
+                    color = AppTextSecondary,
+                    style = MaterialTheme.typography.labelSmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
             }
+        }
+    }
+}
+
+@Composable
+private fun ComposerToolButton(
+    icon: ImageVector,
+    contentDescription: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Surface(
+        onClick = onClick,
+        enabled = enabled,
+        shape = RoundedCornerShape(12.dp),
+        color = if (enabled) AppSurfaceAlt else AppSurfaceAlt.copy(alpha = 0.5f),
+        modifier = Modifier.size(42.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = if (enabled) AppTextPrimary else AppTextSecondary
+            )
         }
     }
 }
@@ -432,4 +584,33 @@ private fun createTempImageUri(context: Context): Uri? {
             file
         )
     }.getOrNull()
+}
+
+private fun startAudioRecording(
+    context: Context,
+    onRecorderCreated: (MediaRecorder) -> Unit,
+    onFileCreated: (File) -> Unit,
+    onRecordingChanged: (Boolean) -> Unit
+) {
+    val file = File(
+        context.cacheDir,
+        "chat_audio_${System.currentTimeMillis()}.m4a"
+    )
+    val audioRecorder = MediaRecorder().apply {
+        setAudioSource(MediaRecorder.AudioSource.MIC)
+        setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+        setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+        setAudioEncodingBitRate(128_000)
+        setAudioSamplingRate(44_100)
+        setOutputFile(file.absolutePath)
+        prepare()
+        start()
+    }
+    onFileCreated(file)
+    onRecorderCreated(audioRecorder)
+    onRecordingChanged(true)
+}
+
+private fun formatRecordingTime(seconds: Int): String {
+    return "%d:%02d".format(Locale.getDefault(), seconds / 60, seconds % 60)
 }

@@ -34,8 +34,11 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -51,6 +54,7 @@ import coil.compose.AsyncImage
 import com.example.mvt.R
 import com.example.mvt.chat.data.model.ChatMessage
 import com.example.mvt.chat.data.repo.ChatRepository
+import com.example.mvt.chat.data.repo.TrainerRealtimeRepository
 import com.example.mvt.chat.viewmodel.ChatUiState
 import com.example.mvt.chat.viewmodel.ChatViewModel
 import com.example.mvt.ui.theme.AppBackground
@@ -63,6 +67,7 @@ import com.example.mvt.ui.theme.AppTextSecondary
 import com.example.mvt.ui.theme.PrimaryBlue
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
+import com.google.firebase.database.FirebaseDatabase
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -82,8 +87,28 @@ fun ChatScreen(
     storage: FirebaseStorage
 ) {
     val repo = remember(db, storage) { ChatRepository(db, storage) }
+    val trainerRepository = remember { TrainerRealtimeRepository(FirebaseDatabase.getInstance()) }
+    var resolvedTrainerPhotoUrl by remember(trainerId, trainerPhotoUrl) {
+        mutableStateOf(trainerPhotoUrl)
+    }
     val vm: ChatViewModel = viewModel(factory = ChatViewModelFactory(repo))
     val state by vm.state.collectAsState()
+
+    DisposableEffect(trainerId, trainerPhotoUrl) {
+        if (trainerPhotoUrl.isNotBlank()) {
+            resolvedTrainerPhotoUrl = trainerPhotoUrl
+        }
+        val listener = trainerRepository.listenTrainerPhotoUrl(trainerId) { photoUrl ->
+            if (photoUrl.isNotBlank()) {
+                resolvedTrainerPhotoUrl = photoUrl
+            }
+        }
+        onDispose {
+            if (listener != null) {
+                trainerRepository.removeTrainerPhotoListener(trainerId, listener)
+            }
+        }
+    }
 
     LaunchedEffect(uid, trainerId) {
         if (uid.isNotBlank() && trainerId.isNotBlank()) {
@@ -123,7 +148,7 @@ fun ChatScreen(
                 athleteName = athleteName,
                 athletePhotoUrl = athletePhotoUrl,
                 trainerName = trainerName,
-                trainerPhotoUrl = trainerPhotoUrl,
+                trainerPhotoUrl = resolvedTrainerPhotoUrl,
                 hasTrainer = trainerId.isNotBlank()
             )
 
@@ -138,7 +163,7 @@ fun ChatScreen(
                     vm = vm,
                     state = state,
                     myAvatarUrl = athletePhotoUrl,
-                    otherAvatarUrl = trainerPhotoUrl
+                    otherAvatarUrl = resolvedTrainerPhotoUrl
                 )
             }
         }

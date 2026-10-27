@@ -3,7 +3,9 @@ package com.example.mvt.chat.data.repo
 import android.net.Uri
 import android.util.Log
 import com.example.mvt.chat.data.model.ChatAlertState
+import com.example.mvt.chat.data.model.ChatConversationSnapshot
 import com.example.mvt.chat.data.model.ChatMessage
+import com.example.mvt.chat.data.model.ConversationPreview
 import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
@@ -93,7 +95,7 @@ class ChatRepository(
 
     fun listenConversation(
         conversationId: String,
-        onChange: (List<ChatMessage>) -> Unit
+        onChange: (ChatConversationSnapshot) -> Unit
     ): ListenerRegistration {
         Log.e(TAG, "[listenConversation] attach conversationId=$conversationId")
 
@@ -102,26 +104,26 @@ class ChatRepository(
             .addSnapshotListener { snap, err ->
                 if (err != null) {
                     Log.e(TAG, "[listenConversation] ERROR: ${err.message}", err)
-                    onChange(emptyList())
+                    onChange(ChatConversationSnapshot())
                     return@addSnapshotListener
                 }
 
                 if (snap == null) {
                     Log.e(TAG, "[listenConversation] snap is NULL")
-                    onChange(emptyList())
+                    onChange(ChatConversationSnapshot())
                     return@addSnapshotListener
                 }
 
                 if (!snap.exists()) {
                     Log.e(TAG, "[listenConversation] snap NOT EXISTS conversationId=$conversationId")
-                    onChange(emptyList())
+                    onChange(ChatConversationSnapshot())
                     return@addSnapshotListener
                 }
 
                 val data = snap.data
                 if (data == null) {
                     Log.e(TAG, "[listenConversation] data is NULL conversationId=$conversationId")
-                    onChange(emptyList())
+                    onChange(ChatConversationSnapshot())
                     return@addSnapshotListener
                 }
 
@@ -159,7 +161,81 @@ class ChatRepository(
                     "[listenConversation] parsed listSize=${list.size} firstId=${first?.id} firstTs=${first?.timestamp} lastId=${last?.id} lastTs=${last?.timestamp}"
                 )
 
-                onChange(list)
+                onChange(
+                    ChatConversationSnapshot(
+                        messages = list,
+                        athleteHasSeen = data["lecturaDeportista"] as? Boolean ?: false,
+                        trainerHasSeen = data["lecturaEntrenador"] as? Boolean ?: false,
+                        lastAthleteSeenAt = data["ultimaLecturaDeportista"]?.toString().orEmpty(),
+                        lastTrainerSeenAt = data["ultimaLecturaEntrenador"]?.toString().orEmpty()
+                    )
+                )
+            }
+    }
+
+    fun listenTrainerConversationPreviews(
+        trainerId: String,
+        athleteIds: Set<String>,
+        onChange: (List<ConversationPreview>) -> Unit,
+        onError: (Exception) -> Unit
+    ): ListenerRegistration {
+        return db.collection("chat")
+            .whereArrayContains("participantes", trainerId)
+            .addSnapshotListener { snap, err ->
+                if (err != null) {
+                    onError(err)
+                    return@addSnapshotListener
+                }
+                val snapshot = snap ?: return@addSnapshotListener
+                val previews = snapshot.documents.mapNotNull { doc ->
+                    val participants = doc.get("participantes") as? List<*>
+                    val athleteId = participants
+                        ?.mapNotNull { it?.toString() }
+                        ?.firstOrNull { it != trainerId && it in athleteIds }
+                        ?: return@mapNotNull null
+                    val messages = parseMessages(doc.get("mensajes"))
+                    val lastMessage = messages.maxByOrNull { isoToEpochMillis(it.timestamp) }
+                    val unread = if (doc.getBoolean("lecturaEntrenador") == false) {
+                        countUnreadMessages(messages, athleteId, doc.getString("ultimaLecturaEntrenador"))
+                    } else {
+                        0
+                    }
+                    ConversationPreview(doc.id, athleteId, lastMessage, unread)
+                }
+                onChange(previews.associateBy { it.athleteId }.values.toList())
+            }
+    }
+
+    fun listenTrainerUnreadCount(
+        trainerId: String,
+        onChange: (Int) -> Unit
+    ): ListenerRegistration {
+        return db.collection("chat")
+            .whereArrayContains("participantes", trainerId)
+            .addSnapshotListener { snap, err ->
+                if (err != null || snap == null) {
+                    onChange(0)
+                    return@addSnapshotListener
+                }
+
+                val unreadCount = snap.documents.sumOf { doc ->
+                    if (doc.getBoolean("lecturaEntrenador") != false) {
+                        return@sumOf 0
+                    }
+
+                    val participants = doc.get("participantes") as? List<*>
+                    val athleteId = participants
+                        ?.mapNotNull { it?.toString() }
+                        ?.firstOrNull { it != trainerId }
+                        ?: return@sumOf 0
+
+                    countUnreadMessages(
+                        messages = parseMessages(doc.get("mensajes")),
+                        athleteId = athleteId,
+                        lastSeen = doc.getString("ultimaLecturaEntrenador")
+                    )
+                }
+                onChange(unreadCount)
             }
     }
 
@@ -427,6 +503,36 @@ class ChatRepository(
             count++
         }
         return count
+    }
+
+    private fun countUnreadMessages(
+        messages: List<ChatMessage>,
+        athleteId: String,
+        lastSeen: String?
+    ): Int {
+        if (lastSeen.isNullOrBlank()) return countTrailingIncomingMessages(messages, athleteId)
+        val lastSeenMillis = isoToEpochMillis(lastSeen)
+        return messages.count {
+            it.remitente == athleteId && isoToEpochMillis(it.timestamp) > lastSeenMillis
+        }
+    }
+
+    private fun parseMessages(raw: Any?): List<ChatMessage> {
+        val messagesMap = raw as? Map<*, *> ?: return emptyList()
+        return messagesMap.entries.mapNotNull { (key, value) ->
+            val messageId = key?.toString() ?: return@mapNotNull null
+            val message = value as? Map<*, *> ?: return@mapNotNull null
+            ChatMessage(
+                id = messageId,
+                texto = message["texto"]?.toString().orEmpty(),
+                audioUrl = message["audioUrl"]?.toString().orEmpty(),
+                imageUrl = message["imageUrl"]?.toString().orEmpty(),
+                remitente = message["remitente"]?.toString().orEmpty(),
+                timestamp = message["timestamp"]?.toString().orEmpty(),
+                rutina = message["rutina"]?.toString(),
+                reactions = parseReactions(message["reactions"])
+            )
+        }
     }
 
     private fun parseReactions(raw: Any?): Map<String, String> {
