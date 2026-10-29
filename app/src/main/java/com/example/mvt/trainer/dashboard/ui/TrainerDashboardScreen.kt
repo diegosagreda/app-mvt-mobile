@@ -1,5 +1,6 @@
 package com.example.mvt.trainer.dashboard.ui
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -15,6 +16,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.platform.LocalLifecycleOwner
@@ -26,6 +28,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -185,15 +188,19 @@ private fun DashboardContent(
             MetricsGrid(metrics = data.metrics)
         }
 
-        item {
+        item(key = "active-athletes-section") {
             PriorityAthletesSection(
                 athletes = data.priorityAthletes,
                 onNavigateToCalendar = onNavigateToCalendar
             )
         }
 
-        item {
-            DashboardSectionCard(title = "PRODUCCIÓN DEPORTIVA", subtitle = "Rutinas creadas por deportista") {
+        item(key = "sports-production-section") {
+            CollapsibleDashboardSection(
+                title = "PRODUCCIÓN DEPORTIVA",
+                subtitle = "Rutinas creadas por deportista",
+                icon = Icons.Default.Assignment
+            ) {
                 if (data.sportsProduction.isEmpty()) {
                     EmptySectionCard(message = "Aún no hay rutinas vinculadas a tus atletas.")
                 } else {
@@ -206,14 +213,22 @@ private fun DashboardContent(
             }
         }
 
-        item {
-            DashboardSectionCard(title = "ESTADO GENERAL", subtitle = "Flujo de rutinas") {
+        item(key = "general-status-section") {
+            CollapsibleDashboardSection(
+                title = "ESTADO GENERAL",
+                subtitle = "Flujo de rutinas",
+                icon = Icons.Default.Assessment
+            ) {
                 RoutineFlowCard(flow = data.routineFlow)
             }
         }
 
-        item {
-            DashboardSectionCard(title = "TRABAJO PENDIENTE", subtitle = "Acciones recomendadas") {
+        item(key = "pending-work-section") {
+            CollapsibleDashboardSection(
+                title = "TRABAJO PENDIENTE",
+                subtitle = "Acciones recomendadas",
+                icon = Icons.Default.PendingActions
+            ) {
                 if (data.recommendedActions.isEmpty()) {
                     EmptySectionCard(message = "No tienes acciones pendientes.")
                 } else {
@@ -234,8 +249,12 @@ private fun DashboardContent(
             }
         }
 
-        item {
-            DashboardSectionCard(title = "ACTIVIDAD RECIENTE", subtitle = "Últimas rutinas programadas") {
+        item(key = "recent-activity-section") {
+            CollapsibleDashboardSection(
+                title = "ACTIVIDAD RECIENTE",
+                subtitle = "Últimas rutinas programadas",
+                icon = Icons.Default.History
+            ) {
                 if (data.recentActivities.isEmpty()) {
                     EmptySectionCard(message = "Cuando crees rutinas, aparecerán aquí ordenadas por fecha.")
                 } else {
@@ -248,8 +267,12 @@ private fun DashboardContent(
             }
         }
 
-        item {
-            DashboardSectionCard(title = "BIBLIOTECA GRATUITA", subtitle = "Planes disponibles") {
+        item(key = "free-library-section") {
+            CollapsibleDashboardSection(
+                title = "BIBLIOTECA GRATUITA",
+                subtitle = "Planes disponibles",
+                icon = Icons.Default.LibraryBooks
+            ) {
                 if (data.availablePlans.isEmpty()) {
                     EmptySectionCard(message = "Aún no tienes planes gratuitos publicados.")
                 } else {
@@ -265,19 +288,15 @@ private fun DashboardContent(
 }
 
 @Composable
-private fun SectionHeader(title: String, subtitle: String) {
-    Column {
-        Text(text = title, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = AppIconMuted, letterSpacing = 1.sp)
-        Text(text = subtitle, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = AppTextPrimary)
-    }
-}
-
-@Composable
-private fun DashboardSectionCard(
+private fun CollapsibleDashboardSection(
     title: String,
     subtitle: String,
-    content: @Composable ColumnScope.() -> Unit
+    icon: ImageVector? = null,
+    initialExpanded: Boolean = true,
+    content: @Composable () -> Unit
 ) {
+    var expanded by rememberSaveable { androidx.compose.runtime.mutableStateOf(initialExpanded) }
+
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -286,11 +305,61 @@ private fun DashboardSectionCard(
         colors = CardDefaults.cardColors(containerColor = AppSurface)
     ) {
         Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.padding(12.dp)
         ) {
-            SectionHeader(title = title, subtitle = subtitle)
-            content()
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { expanded = !expanded },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (icon != null) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = null,
+                        tint = AppIconMuted,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = title,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppIconMuted,
+                        letterSpacing = 1.sp
+                    )
+                    Text(
+                        text = subtitle,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = AppTextPrimary
+                    )
+                }
+
+                Icon(
+                    imageVector = if (expanded) {
+                        Icons.Default.KeyboardArrowUp
+                    } else {
+                        Icons.Default.KeyboardArrowDown
+                    },
+                    contentDescription = if (expanded) "Contraer sección" else "Expandir sección",
+                    tint = AppTextSecondary
+                )
+            }
+
+            AnimatedVisibility(visible = expanded) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    content()
+                }
+            }
         }
     }
 }
@@ -300,36 +369,28 @@ private fun PriorityAthletesSection(
     athletes: List<PriorityAthlete>,
     onNavigateToCalendar: (String) -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .border(1.dp, AppBorder, RoundedCornerShape(12.dp)),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = AppSurface)
+    CollapsibleDashboardSection(
+        title = "ATLETAS ACTIVOS",
+        subtitle = "Seguimiento prioritario",
+        icon = Icons.Default.People,
+        initialExpanded = true
     ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            SectionHeader(title = "ATLETAS ACTIVOS", subtitle = "Seguimiento prioritario")
-
-            if (athletes.isEmpty()) {
-                Text(
-                    text = "No hay deportistas para el filtro seleccionado.",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 12.dp),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                    fontSize = 12.sp,
-                    color = AppTextSecondary
+        if (athletes.isEmpty()) {
+            Text(
+                text = "No hay deportistas para el filtro seleccionado.",
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 12.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                fontSize = 12.sp,
+                color = AppTextSecondary
+            )
+        } else {
+            athletes.forEach { athlete ->
+                PriorityAthleteCard(
+                    athlete = athlete,
+                    onNavigateToCalendar = { onNavigateToCalendar(athlete.id) }
                 )
-            } else {
-                athletes.forEach { athlete ->
-                    PriorityAthleteCard(
-                        athlete = athlete,
-                        onNavigateToCalendar = { onNavigateToCalendar(athlete.id) }
-                    )
-                }
             }
         }
     }
@@ -370,11 +431,13 @@ private fun TrainerProfileHeaderCard(
         colors = CardDefaults.cardColors(containerColor = AppSurface)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // AVATAR CON IMAGEN Y FALLBACK
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Box(
                     modifier = Modifier
-                        .size(52.dp)
+                        .size(62.dp)
                         .clip(CircleShape)
                         .background(PrimaryBlue),
                     contentAlignment = Alignment.Center
@@ -395,20 +458,51 @@ private fun TrainerProfileHeaderCard(
                         Image(
                             painter = painterResource(id = R.drawable.iconografia_02_svg),
                             contentDescription = "Cuenta",
-                            modifier = Modifier.size(32.dp)
+                            modifier = Modifier.size(40.dp)
                         )
                     }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = profile.name, fontWeight = FontWeight.Bold, fontSize = 17.sp, color = AppTextPrimary)
-                    Text(text = "${profile.discipline} · ${profile.location ?: ""}", fontSize = 12.sp, color = AppTextSecondary)
-                }
-
                 Column(
-                    horizontalAlignment = Alignment.Start,
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = profile.name,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 17.sp,
+                        color = AppTextPrimary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = profile.discipline,
+                        fontSize = 12.sp,
+                        color = AppTextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = profile.location.orEmpty(),
+                        fontSize = 12.sp,
+                        color = AppTextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.Bottom
+            ) {
+                Column(
+                    modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
@@ -420,19 +514,55 @@ private fun TrainerProfileHeaderCard(
                     PlanSelector(
                         profile = profile,
                         planCounts = planCounts,
-                        onPlanSelected = onPlanSelected
+                        onPlanSelected = onPlanSelected,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            //.widthIn(max = 132.dp)
+                            .height(42.dp)
                     )
+                }
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+
+                ) {
+                    Text(
+                        text = "",
+                        fontSize = 10.sp
+                    )
+
                     Button(
                         onClick = onNavigateToAthletes,
-                        modifier = Modifier.width(132.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = PrimaryBlue),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                        shape = RoundedCornerShape(6.dp),
+                        contentPadding = PaddingValues(horizontal = 8.dp)
                     ) {
-                        Icon(imageVector = Icons.Default.People, contentDescription = null, modifier = Modifier.size(16.dp), tint = AppTextPrimary)
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(text = "Deportistas", fontSize = 12.sp, color = AppTextPrimary)
+                        Icon(
+                            imageVector = Icons.Default.People,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                            tint = AppTextPrimary
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = "Deportistas",
+                            fontSize = 12.sp,
+                            color = AppTextPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
+
+
+
                 }
+
+
+
             }
 
             Spacer(modifier = Modifier.height(16.dp))
@@ -467,16 +597,15 @@ private fun TrainerProfileHeaderCard(
 private fun PlanSelector(
     profile: TrainerProfileInfo,
     planCounts: Map<String, Int>,
-    onPlanSelected: (String) -> Unit
+    onPlanSelected: (String) -> Unit,
+    modifier: Modifier = Modifier
 ) {
     var expanded by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
     val selectedLabel = "${profile.selectedPlan} (${planCounts[profile.selectedPlan] ?: 0})"
 
     Box {
         Surface(
-            modifier = Modifier
-                .width(132.dp)
-                .clickable { expanded = true },
+            modifier = modifier.clickable { expanded = true },
             shape = RoundedCornerShape(6.dp),
             color = AppSurfaceAlt,
             border = androidx.compose.foundation.BorderStroke(1.dp, AppBorder)
@@ -490,6 +619,7 @@ private fun PlanSelector(
                     color = AppTextPrimary,
                     fontSize = 11.sp,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f)
                 )
                 Icon(
@@ -870,4 +1000,3 @@ private fun PlanCard(plan: AvailablePlan) {
         }
     }
 }
-
