@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
+import java.util.Calendar
 import java.util.Locale
 import java.util.TimeZone
 
@@ -33,7 +34,8 @@ data class ChatUiState(
     val audioUri: Uri? = null,
     val imageUri: Uri? = null,
     val messages: List<UiMessage> = emptyList(),
-    val totalMessages: Int = 0
+    val totalMessages: Int = 0,
+    val recipientHasSeen: Boolean = false
 )
 
 class ChatViewModel(
@@ -74,19 +76,36 @@ class ChatViewModel(
         listener?.remove()
         _state.update { it.copy(isLoading = true) }
 
-        listener = repo.listenConversation(conversationId) { list ->
+        listener = repo.listenConversation(conversationId) { snapshot ->
             val myUid = _state.value.uid
 
             // Ordena robusto por ISO (y si llega algún legacy, cae a 0)
-            val sorted = list.sortedBy { isoToMillisSafe(it.timestamp) }
+            val sorted = snapshot.messages.sortedBy { isoToMillisSafe(it.timestamp) }
 
-            val uiList = groupByDate(sorted, myUid)
+            val recipientHasSeen = if (_state.value.role == "deportista") {
+                snapshot.trainerHasSeen
+            } else {
+                snapshot.athleteHasSeen
+            }
+            val recipientLastSeenAt = if (_state.value.role == "deportista") {
+                snapshot.lastTrainerSeenAt
+            } else {
+                snapshot.lastAthleteSeenAt
+            }
+            val recipientLastSeenMillis = isoToMillisSafe(recipientLastSeenAt)
+            val uiList = groupByDate(
+                list = sorted,
+                myUid = myUid,
+                recipientHasSeen = recipientHasSeen,
+                recipientLastSeenMillis = recipientLastSeenMillis
+            )
 
             _state.update {
                 it.copy(
                     isLoading = false,
                     messages = uiList,
-                    totalMessages = sorted.size
+                    totalMessages = sorted.size,
+                    recipientHasSeen = recipientHasSeen
                 )
             }
         }
@@ -265,19 +284,24 @@ class ChatViewModel(
     // =========================
     // Helpers UI (headers fecha)
     // =========================
-    private fun groupByDate(list: List<ChatMessage>, myUid: String): List<UiMessage> {
+    private fun groupByDate(
+        list: List<ChatMessage>,
+        myUid: String,
+        recipientHasSeen: Boolean = false,
+        recipientLastSeenMillis: Long = 0L
+    ): List<UiMessage> {
 
         fun label(tsIso: String): String {
             val ms = isoToMillisSafe(tsIso)
             val d = Date(ms)
 
-            val todayStart = Date().apply { hours = 0; minutes = 0; seconds = 0 }.time
-            val yesterdayStart = todayStart - 86_400_000L
-            val dayStart = Date(d.time).apply { hours = 0; minutes = 0; seconds = 0 }.time
+            val messageCalendar = Calendar.getInstance().apply { time = d }
+            val today = Calendar.getInstance()
+            val yesterday = Calendar.getInstance().apply { add(Calendar.DAY_OF_YEAR, -1) }
 
-            return when (dayStart) {
-                todayStart -> "Hoy"
-                yesterdayStart -> "Ayer"
+            return when {
+                isSameCalendarDay(messageCalendar, today) -> "HOY"
+                isSameCalendarDay(messageCalendar, yesterday) -> "AYER"
                 else -> SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(d)
             }
         }
@@ -287,12 +311,21 @@ class ChatViewModel(
             val g = label(m.timestamp) // ✅ ISO
             val show = g != lastGroup
             lastGroup = g
+            val isMine = m.remitente == myUid
+            val isReadByRecipient = if (!isMine) {
+                false
+            } else if (recipientLastSeenMillis > 0L) {
+                isoToMillisSafe(m.timestamp) <= recipientLastSeenMillis
+            } else {
+                recipientHasSeen
+            }
 
             UiMessage(
                 m,
                 g,
                 show,
-                m.remitente == myUid
+                isMine,
+                isReadByRecipient = isReadByRecipient
             )
         }
     }
@@ -304,12 +337,23 @@ class ChatViewModel(
     }
 
     private fun isoToMillisSafe(iso: String): Long {
-        return try {
-            val fmt = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.US)
-            fmt.timeZone = TimeZone.getTimeZone("UTC")
-            (fmt.parse(iso)?.time) ?: 0L
-        } catch (_: Exception) {
-            0L
+        val formats = listOf(
+            "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'",
+            "yyyy-MM-dd'T'HH:mm:ss'Z'"
+        )
+        for (pattern in formats) {
+            runCatching {
+                SimpleDateFormat(pattern, Locale.US).apply {
+                    timeZone = TimeZone.getTimeZone("UTC")
+                }.parse(iso)?.time
+            }.getOrNull()?.let { return it }
         }
+        return 0L
+    }
+
+    private fun isSameCalendarDay(first: Calendar, second: Calendar): Boolean {
+        return first.get(Calendar.ERA) == second.get(Calendar.ERA) &&
+            first.get(Calendar.YEAR) == second.get(Calendar.YEAR) &&
+            first.get(Calendar.DAY_OF_YEAR) == second.get(Calendar.DAY_OF_YEAR)
     }
 }

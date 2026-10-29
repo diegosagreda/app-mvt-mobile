@@ -36,11 +36,15 @@ import com.example.mvt.trainer.navigation.TrainerNavGraph
 import com.example.mvt.ui.theme.*
 import com.example.mvt.ui.viewmodels.UserViewModel
 
+
+private val HeaderBadgeRed = Color(0xFFE64848)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TrainerMainScreen(
     navController: NavController, // Root NavController
-    userViewModel: UserViewModel
+    userViewModel: UserViewModel,
+    unreadMessagesCount: Int = 0
 ) {
     val trainerNavController = rememberNavController()
     val backStackEntry by trainerNavController.currentBackStackEntryAsState()
@@ -58,7 +62,13 @@ fun TrainerMainScreen(
         topBar = {
             TrainerHeader(
                 profilePhotoUrl = user?.foto_url,
+                unreadMessagesCount = unreadMessagesCount,
                 currentRoute = currentRoute,
+                onChatClick = {
+                    trainerNavController.navigate(TrainerDestination.CHAT) {
+                        launchSingleTop = true
+                    }
+                },
                 onProfileClick = {
                     if (currentRoute == TrainerDestination.SETTINGS) {
                         trainerNavController.popBackStack()
@@ -103,7 +113,9 @@ fun TrainerMainScreen(
 @Composable
 private fun TrainerHeader(
     profilePhotoUrl: String?,
+    unreadMessagesCount: Int,
     currentRoute: String?,
+    onChatClick: () -> Unit,
     onProfileClick: () -> Unit
 ) {
     TopAppBar(
@@ -125,13 +137,41 @@ private fun TrainerHeader(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                IconButton(onClick = { /* TODO */ }) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clickable(onClick = onChatClick),
+                    contentAlignment = Alignment.Center
+                ) {
                     Icon(
                         imageVector = Icons.Outlined.Email,
                         contentDescription = "Mensajes",
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)
                     )
+                    if (unreadMessagesCount > 0) {
+                        Surface(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = 3.dp, y = (-2).dp)
+                                .size(18.dp),
+                            shape = CircleShape,
+                            color = HeaderBadgeRed,
+                            contentColor = Color.White
+                        ) {
+                            Box(
+                                modifier = Modifier.border(1.dp, AppBackground, CircleShape),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = if (unreadMessagesCount > 99) "99+" else unreadMessagesCount.toString(),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
                 }
                 IconButton(onClick = { /* TODO */ }) {
                     Icon(
@@ -201,6 +241,20 @@ private fun TrainerBottomNavigationBar(
                     label = "Inicio",
                     onClick = {
                         onNavigate(TrainerDestination.HOME)
+                    }
+                )
+
+                TrainerNavigationItem(
+                    selected = currentRoute == TrainerDestination.CHAT,
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Outlined.Email,
+                            contentDescription = "Chat"
+                        )
+                    },
+                    label = "Chat",
+                    onClick = {
+                        onNavigate(TrainerDestination.CHAT)
                     }
                 )
 

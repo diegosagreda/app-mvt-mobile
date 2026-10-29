@@ -78,6 +78,7 @@ fun AppNavigation() {
 
     // ====== ESTADO GLOBAL DEL CHAT ======
     var unreadMessagesCount by remember { mutableStateOf(0) }
+    var trainerUnreadMessagesCount by remember { mutableStateOf(0) }
     var lastNotifiedIncomingMessageId by remember { mutableStateOf("") }
 
     // ====== ID DEPORTISTA (UID) ======
@@ -181,6 +182,21 @@ fun AppNavigation() {
         }
     }
 
+    DisposableEffect(currentUser?.uid, chatRepo) {
+        val trainerUid = currentUser?.uid.orEmpty()
+        if (trainerUid.isBlank()) {
+            trainerUnreadMessagesCount = 0
+            onDispose { }
+        } else {
+            val registration = chatRepo.listenTrainerUnreadCount(trainerUid) { count ->
+                trainerUnreadMessagesCount = count
+            }
+            onDispose {
+                registration.remove()
+            }
+        }
+    }
+
     // ====== NAVHOST (Fixed Start Destination for stability) ======
     NavHost(
         navController = navController,
@@ -249,7 +265,12 @@ fun AppNavigation() {
             composable("trainerMain") {
                 TrainerMainScreen(
                     navController = navController,
-                    userViewModel = userViewModel
+                    userViewModel = userViewModel,
+                    unreadMessagesCount = if (currentRoute == "trainerMain") {
+                        trainerUnreadMessagesCount
+                    } else {
+                        0
+                    }
                 )
             }
 

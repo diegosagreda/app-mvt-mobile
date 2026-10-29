@@ -5,6 +5,7 @@ object TrainerDestination {
     const val PROFILE = "trainer_profile"
     const val PERSONAL_INFO = "trainer_personal_info"
     const val SETTINGS = "trainer_settings"
+    const val CHAT = "trainer_chat"
 
     //rutas para las acciones del dashboard
     const val ATHLETES = "trainer_athletes"

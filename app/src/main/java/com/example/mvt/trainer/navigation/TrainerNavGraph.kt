@@ -23,7 +23,10 @@ import com.example.mvt.ui.screens.AccountSettingsScreen
 import com.example.mvt.ui.screens.UnderConstructionDestination
 import com.example.mvt.ui.screens.UnderConstructionScreen
 import com.example.mvt.ui.theme.AppTextSecondary
+import com.example.mvt.chat.ui.screen.TrainerChatScreen
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.storage.FirebaseStorage
 
 @Composable
 fun TrainerNavGraph(
@@ -75,6 +78,14 @@ fun TrainerNavGraph(
 
         composable(TrainerDestination.ATHLETES) {
             ApprovedAthletesScreen(onBack = { navController.popBackStack() })
+        }
+
+        composable(TrainerDestination.CHAT) {
+            TrainerChatScreen(
+                db = FirebaseFirestore.getInstance(),
+                storage = FirebaseStorage.getInstance(),
+                onBack = { navController.popBackStack() }
+            )
         }
 
         composable(TrainerDestination.PENDING_REQUESTS) {
