@@ -73,6 +73,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -102,6 +103,8 @@ import com.example.mvt.data.firebase.services.FirestoreService
 import com.example.mvt.domain.usecases.GetRoutinesByAthleteUseCase
 import com.example.mvt.goals.model.TrainingAvailability
 import com.example.mvt.ui.components.SharedRoutineCard
+import com.example.mvt.ui.components.RoutineCalendarView
+import com.example.mvt.ui.components.RoutinesCalendarContent
 import com.example.mvt.ui.theme.AppBackground
 import com.example.mvt.ui.theme.AppBorder
 import com.example.mvt.ui.theme.AppSurface
@@ -120,6 +123,7 @@ import com.kizitonwose.calendar.core.CalendarMonth
 import com.kizitonwose.calendar.core.DayPosition
 import com.kizitonwose.calendar.core.daysOfWeek
 import com.kizitonwose.calendar.core.yearMonth
+import com.kizitonwose.calendar.core.OutDateStyle
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -128,6 +132,7 @@ import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.tasks.await
@@ -170,8 +175,10 @@ fun RoutinesScreen(
     }
 
     var selectedDate by remember { mutableStateOf(LocalDate.now()) }
+    var calendarView by remember { mutableStateOf(RoutineCalendarView.MONTH) }
     var scrollToSelectedRoutines by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
+    val calendarScope = rememberCoroutineScope()
     val routines by routineViewModel.routines.collectAsState()
 
     LaunchedEffect(routines) {
@@ -189,7 +196,8 @@ fun RoutinesScreen(
         startMonth = startMonth,
         endMonth = endMonth,
         firstVisibleMonth = currentMonth,
-        firstDayOfWeek = firstDayOfWeek
+        firstDayOfWeek = firstDayOfWeek,
+        outDateStyle = OutDateStyle.EndOfGrid
     )
 
     LaunchedEffect(currentAthleteId, state) {
@@ -244,24 +252,35 @@ fun RoutinesScreen(
                     item { content() }
                 }
                 item {
-                    PerformanceCalendarHeader()
-                }
-
-                item {
-                    PerformanceCalendarCard(
+                    RoutinesCalendarContent(
+                        modifier = Modifier.fillParentMaxHeight(),
                         state = state,
                         routinesByDate = routinesByDate,
-                        trainingAvailability = trainingAvailability,
                         selectedDate = selectedDate,
-                        onDateSelected = {
-                            selectedDate = it
+                        view = calendarView,
+                        onDateSelected = { date ->
+                            selectedDate = date
                             scrollToSelectedRoutines = true
-                            Log.d("RoutinesScreen", "Fecha seleccionada: $it")
+                            Log.d("RoutinesScreen", "Fecha seleccionada: $date")
+                        },
+                        onViewChanged = { calendarView = it },
+                        onPreviousMonth = {
+                            val previousMonth = state.firstVisibleMonth.yearMonth.minusMonths(1)
+                            calendarScope.launch { state.animateScrollToMonth(previousMonth) }
+                        },
+                        onNextMonth = {
+                            val nextMonth = state.firstVisibleMonth.yearMonth.plusMonths(1)
+                            calendarScope.launch { state.animateScrollToMonth(nextMonth) }
+                        },
+                        onRoutineClick = { routine ->
+                            onRoutineClick()
+                            onRoutineNavigate?.invoke(routine.id)
+                                ?: navController.navigate("routine_detail/${Uri.encode(routine.id)}")
                         }
                     )
                 }
 
-                if (selectedRoutines.isNotEmpty()) {
+                if (calendarView == RoutineCalendarView.MONTH && selectedRoutines.isNotEmpty()) {
                     item {
                         SelectedRoutinesHeader(selectedDate = selectedDate)
                     }

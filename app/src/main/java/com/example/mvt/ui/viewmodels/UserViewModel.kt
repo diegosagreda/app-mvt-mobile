@@ -21,7 +21,7 @@ sealed class ProfileUiState {
 }
 
 class UserViewModel(
-    private val getUserInfoUseCase: GetUserInfoUseCase
+    private val getUserInfoUseCase: GetUserInfoUseCase = GetUserInfoUseCase(UserRepository())
 ) : ViewModel() {
 
     private val repository = UserRepository()
