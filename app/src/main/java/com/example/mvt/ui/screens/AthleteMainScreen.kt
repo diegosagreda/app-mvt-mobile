@@ -61,6 +61,11 @@ import androidx.compose.material.icons.filled.Umbrella
 import androidx.compose.material.icons.filled.WbCloudy
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material.icons.filled.Whatshot
+import androidx.compose.material.icons.outlined.Accessibility
+import androidx.compose.material.icons.outlined.BarChart
+import androidx.compose.material.icons.outlined.DirectionsRun
+import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -92,6 +97,7 @@ import com.example.mvt.data.firebase.services.CoachIntelligenceService
 import com.example.mvt.data.firebase.services.FirestoreService
 import com.example.mvt.domain.repositories.StravaRepository
 import com.example.mvt.ui.components.AthleteHeader
+import com.example.mvt.ui.components.header.RoutineModuleHeader
 import com.example.mvt.ui.screens.personaldata.MorphologyScreen
 import com.example.mvt.ui.screens.personaldata.PhysicalCapacityScreen
 import com.example.mvt.ui.screens.settings.ConnectionScreen
@@ -293,21 +299,46 @@ fun AthleteMainScreen(
     Scaffold(
         modifier = Modifier.background(AppBackground),
         topBar = {
-            AthleteHeader(
-                onMessageClick = onOpenChat,
-                onNotificationClick = {
-                    showNotificationsPanel = true
-                },
-                onProfileClick = {
-                    innerNavController.navigate("account_settings") {
-                        launchSingleTop = true
+            if (currentInnerRoute == "routines" || currentInnerRoute == "statistics") {
+                RoutineModuleHeader(
+                    selectedStatistics = currentInnerRoute == "statistics",
+                    profilePhotoUrl = user?.foto_url,
+                    unreadMessagesCount = unreadMessagesCount,
+                    unreadNotificationsCount = notificationsState.unreadCount,
+                    onBackClick = { innerNavController.popBackStack() },
+                    onMessageClick = onOpenChat,
+                    onNotificationClick = { showNotificationsPanel = true },
+                    onProfileClick = {
+                        innerNavController.navigate("account_settings") {
+                            launchSingleTop = true
+                        }
+                    },
+                    onStatisticsClick = {
+                        innerNavController.navigate("statistics") {
+                            launchSingleTop = true
+                        }
+                    },
+                    onCalendarClick = {
+                        innerNavController.navigate("routines") {
+                            launchSingleTop = true
+                        }
                     }
-                },
-                profilePhotoUrl = user?.foto_url,
-                isStravaConnected = isStravaConnected,
-                unreadMessagesCount = unreadMessagesCount,
-                unreadNotificationsCount = notificationsState.unreadCount
-            )
+                )
+            } else {
+                AthleteHeader(
+                    onMessageClick = onOpenChat,
+                    onNotificationClick = { showNotificationsPanel = true },
+                    onProfileClick = {
+                        innerNavController.navigate("account_settings") {
+                            launchSingleTop = true
+                        }
+                    },
+                    profilePhotoUrl = user?.foto_url,
+                    isStravaConnected = isStravaConnected,
+                    unreadMessagesCount = unreadMessagesCount,
+                    unreadNotificationsCount = notificationsState.unreadCount
+                )
+            }
         },
         bottomBar = {
             AthleteBottomNavigationBar(
@@ -712,14 +743,14 @@ private fun AthleteBottomNavigationBar(
     onNavigate: (String) -> Unit
 ) {
     Surface(
-        color = AppSurface,
+        color = AppBackground,
         tonalElevation = 10.dp,
         shadowElevation = 14.dp,
         border = BorderStroke(1.dp, AppBorder)
     ) {
         Column {
             NavigationBar(
-                containerColor = AppSurface,
+                containerColor = AppBackground,
                 tonalElevation = 0.dp,
                 windowInsets = WindowInsets(0, 0, 0, 0),
                 modifier = Modifier.height(76.dp)
@@ -728,7 +759,13 @@ private fun AthleteBottomNavigationBar(
                     val selected = currentRoute == item.route ||
                         (item.route == "plan" && currentRoute in planRoutes) ||
                         (item.route == "profile" && currentRoute in personalDataRoutes)
-                    val available = item.route in setOf("home", "routines", "statistics", "plan", "profile")
+                    val available = item.route in setOf(
+                        "home",
+                        "routines",
+                        "statistics",
+                        "plan",
+                        "profile"
+                    )
                     NavigationBarItem(
                         selected = selected,
                         enabled = available,
@@ -752,9 +789,9 @@ private fun AthleteBottomNavigationBar(
                             }
                         },
                         colors = NavigationBarItemDefaults.colors(
-                            selectedIconColor = Color.White,
-                            selectedTextColor = Color.White,
-                            unselectedIconColor = AppTextSecondary,
+                            selectedIconColor = PrimaryBlue,
+                            selectedTextColor = PrimaryBlue,
+                            unselectedIconColor = PrimaryBlue,
                             unselectedTextColor = AppTextSecondary,
                             indicatorColor = PrimaryBlue.copy(alpha = 0.22f)
                         )
